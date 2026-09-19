@@ -18,7 +18,8 @@ function getMMMIntroFacts(player, settings, base) {
 function renderMMM() {
     const view = mmmDisplay;
     const root = document.getElementById('mmm-overlay');
-    document.getElementById('display-app').dataset.theme = view.settings.theme === 'mmm' ? 'mmm' : 'classic';
+    document.getElementById('display-app').dataset.theme = ['mmm','ispl'].includes(view.settings.theme) ? view.settings.theme : 'classic';
+    if (typeof renderISPL === 'function') renderISPL(view);
     const player = view.result ? view.result.player : view.player;
     root.hidden = !player || !player.name || !view.settings.showBidding || (view.settings.teamVisibility || []).some(Boolean);
     if (root.hidden) return;
@@ -88,6 +89,7 @@ function receiveMMM(data) {
     const view = mmmDisplay;
     if (data.type === 'SYNC_ALL') {
         view.settings = data.settings || view.settings;
+        view.teams = data.teams || [];
         view.player = data.currentPlayer || null;
         view.base = data.base; view.bid = data.bid;
     } else if (data.type === 'BID_UPDATE') {

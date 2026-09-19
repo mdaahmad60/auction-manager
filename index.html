@@ -1167,6 +1167,7 @@ body { margin: 0; padding: 0; }
 .pricing-range-row label { flex:1; min-width:100px; }
 </style>
 <link rel="stylesheet" href="themes/mmm.css">
+<link rel="stylesheet" href="themes/ispl.css">
 <link rel="stylesheet" href="themes/tournaments.css">
 <link rel="stylesheet" href="themes/controller-responsive.css">
 <link rel="stylesheet" href="themes/auth.css">
@@ -1363,7 +1364,17 @@ body { margin: 0; padding: 0; }
         <select id="overlayTheme" onchange="updateSettings()">
             <option value="classic">Classic</option>
             <option value="mmm">MMM Purple</option>
+            <option value="ispl">ISPL</option>
         </select>
+        <div id="ispl-controls" hidden>
+            <label for="isplView">ISPL display</label>
+            <select id="isplView" onchange="updateSettings()">
+                <option value="player">Player</option>
+                <option value="purse">Purse remaining</option>
+                <option value="squad">Squad size</option>
+            </select>
+            <p style="font-size:12px;color:#666">Player follows selection, bidding and sale results. Purse and squad panels show all teams with automatic paging.</p>
+        </div>
         <p style="font-size:12px;color:#666">MMM Purple: select a player to introduce them. Changing the bid automatically switches to bidding. Select the next player whenever you are ready.</p>
         <div class="toggle-wrap">
             <label><input type="checkbox" id="setPurse" onchange="updateSettings()"> Show Team Purse</label>
@@ -1394,7 +1405,7 @@ body { margin: 0; padding: 0; }
                 <span class="copy-feedback" id="copy-feedback">Copied!</span>
             </button>
         </div>
-        <p style="font-size:12px;color:#666;margin:10px 0 0">Instant, no internet needed, on this device. Other devices/browsers connect peer-to-peer and may fail on restrictive networks — use the internet link below for those.</p>
+        <p style="font-size:12px;color:#666;margin:10px 0 0">Instant, no internet needed, on this device. Other devices/browsers connect peer-to-peer and may fail on restrictive networks.</p>
     </div>
 
     <div class="card" id="overlay-live-card" style="border-top: 4px solid #7c3aed; margin-top: 0; display:none;">
@@ -1528,6 +1539,7 @@ body { margin: 0; padding: 0; }
 
     </div>
 
+    <section id="ispl-overlay" hidden aria-label="ISPL auction broadcast"></section>
     <section id="mmm-overlay" hidden aria-label="Auction broadcast" data-phase="intro">
         <div class="mmm-card">
             <div class="mmm-portrait"><div id="mmm-initials" class="mmm-initials"></div><img id="mmm-photo" alt="Player portrait" referrerpolicy="no-referrer" hidden><div class="mmm-unsold">UNSOLD</div></div>
@@ -1603,6 +1615,7 @@ body { margin: 0; padding: 0; }
 <script src="scripts/connection.js"></script>
 <script src="scripts/live-overview.js"></script>
 <script src="themes/mmm.js"></script>
+<script src="themes/ispl.js"></script>
 <script src="scripts/auth.js"></script>
 
 </body>

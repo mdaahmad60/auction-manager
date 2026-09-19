@@ -1,0 +1,69 @@
+/* Transparent 1920 × 1080 broadcast graphics; the video remains in OBS. */
+#ispl-overlay { display:none; position:absolute; inset:0; pointer-events:none; color:white; font-family:'Bebas Neue','Arial Narrow',sans-serif; text-transform:uppercase; }
+#display-app[data-theme="ispl"] #ispl-overlay:not([hidden]) { display:block; }
+#display-app[data-theme="ispl"] #left-panel,
+#display-app[data-theme="ispl"] #sheet-ui,
+#display-app[data-theme="ispl"] #mmm-overlay { display:none !important; }
+#ispl-overlay [hidden] { display:none !important; }
+.ispl-card { position:absolute; width:820px; height:435px; left:50%; bottom:40px; transform:translateX(-50%); }
+.ispl-prices,.ispl-sidebar { background:repeating-radial-gradient(ellipse at -20% 10%,transparent 0 17px,#b347af24 19px 27px,transparent 29px 43px),linear-gradient(115deg,#242568,#171249 65%,#213b87); }
+.ispl-prices { position:absolute; bottom:104px; width:100%; height:98px; border-radius:22px 22px 0 0; display:flex; justify-content:space-between; align-items:center; box-shadow:inset 0 2px 6px #536adc; }
+.ispl-price { width:285px; text-align:center; line-height:1; }
+.ispl-price > span { display:block; font-size:32px; }
+.ispl-price > strong { display:block; font-size:56px; font-weight:400; }
+.ispl-portrait { position:absolute; bottom:104px; left:295px; width:230px; height:330px; border:7px solid #6020ae; border-radius:17px 17px 0 0; box-sizing:border-box; overflow:hidden; background:linear-gradient(135deg,#f1eef5,#9d90ae); }
+.ispl-initials { position:absolute; inset:0; display:grid; place-items:center; font-size:90px; color:#51258e; }
+.ispl-portrait img { position:absolute; width:100%; height:auto; max-height:none; top:0; left:0; }
+.ispl-portrait img[data-vertical-align="center"] { top:50%; transform:translateY(-50%); }
+.ispl-portrait img[data-vertical-align="bottom"] { top:100%; transform:translateY(-100%); }
+.ispl-portrait:has(img:not([hidden])) .ispl-initials { visibility:hidden; }
+.ispl-caption { position:absolute; bottom:46px; width:100%; height:60px; display:flex; align-items:center; justify-content:center; gap:30px; padding:0 24px; box-sizing:border-box; background:linear-gradient(110deg,#4e58a1,#222466 30%,#23276d); border-radius:12px 12px 0 0; }
+.ispl-caption strong { font-size:46px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ispl-caption span { font-size:34px; flex-shrink:0; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ispl-category { position:absolute; bottom:0; width:100%; height:46px; display:flex; justify-content:center; align-items:center; gap:12px; border-radius:0 0 20px 20px; background:linear-gradient(#b8237b,#dc4095); font-size:36px; }
+.ispl-category strong { color:#fcf23b; font-weight:400; max-width:560px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ispl-gavel { width:82px; height:82px; border:3px solid #91c9ff; border-radius:50%; margin:auto; box-shadow:0 0 12px #1289ff,inset 0 0 12px #1289ff; }
+.ispl-gavel svg { width:100%; height:100%; }
+#ispl-overlay[data-phase="sold"] .ispl-portrait,#ispl-overlay[data-phase="unsold"] .ispl-portrait { left:12px; }
+#ispl-overlay[data-phase="sold"] .ispl-prices,#ispl-overlay[data-phase="unsold"] .ispl-prices { padding-left:250px; box-sizing:border-box; }
+.ispl-result { flex:1; text-align:center; font-size:60px; color:#a5f332; font-weight:400; white-space:nowrap; }
+.ispl-winner { width:115px; padding:4px 10px; font-size:18px; text-align:center; max-height:94px; overflow:hidden; box-sizing:border-box; }
+.ispl-winner img { display:block; width:100%; height:56px; object-fit:contain; }
+#ispl-overlay[data-phase="unsold"] .ispl-prices { background:repeating-linear-gradient(75deg,transparent 0 18px,#8b140d44 19px 29px),linear-gradient(#be2014,#88150d); }
+#ispl-overlay[data-phase="unsold"] .ispl-result { color:white; font-size:88px; }
+.ispl-sidebar { position:absolute; left:0; top:0; bottom:0; width:440px; padding:24px 28px 20px; box-sizing:border-box; border-right:4px solid #5743b0; }
+.ispl-sidebar-heading { height:104px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; color:#89e6f6; }
+.ispl-tournament-name { font-size:30px; line-height:1.05; max-width:100%; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ispl-sidebar-heading strong { font-size:48px; line-height:1; font-weight:400; }
+.ispl-sidebar h2 { background:#d33491; border-radius:12px; font-size:42px; line-height:1.2; padding:10px 12px; margin:4px 0 12px; white-space:nowrap; font-weight:400; }
+.ispl-units { text-align:right; font-size:32px; height:42px; }
+.ispl-team-rows { display:flex; flex-direction:column; gap:11px; }
+.ispl-team-row { min-height:89px; background:#88e4f5; color:#071623; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; box-sizing:border-box; }
+.ispl-team-row span { font-size:34px; line-height:1; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ispl-team-row strong { font-weight:400; font-size:49px; flex-shrink:0; }
+.ispl-page { text-align:right; font-size:20px; padding-top:5px; }
+
+/* Decorative motion stays subtle while the data and portrait remain readable. */
+@media (prefers-reduced-motion:no-preference) {
+    .ispl-portrait { animation:ispl-border-glow 4s ease-in-out infinite; }
+    .ispl-gavel svg { animation:ispl-gavel-ready 3s ease-in-out infinite; transform-origin:50% 65%; }
+    .ispl-caption { overflow:hidden; }
+    .ispl-caption::after {
+        content:''; position:absolute; inset:0; pointer-events:none;
+        background:linear-gradient(110deg,transparent 30%,#ffffff22 50%,transparent 70%);
+        transform:translateX(-120%); animation:ispl-light-sweep 6s ease-in-out infinite;
+    }
+}
+@keyframes ispl-border-glow {
+    0%,100% { border-color:#6020ae; box-shadow:0 0 0 #9750e700; }
+    50% { border-color:#9750e7; box-shadow:0 0 12px #9750e755; }
+}
+@keyframes ispl-gavel-ready {
+    0%,65%,100% { transform:rotate(0); }
+    78% { transform:rotate(-14deg); }
+    88% { transform:rotate(8deg); }
+}
+@keyframes ispl-light-sweep {
+    0%,35% { transform:translateX(-120%); }
+    75%,100% { transform:translateX(120%); }
+}

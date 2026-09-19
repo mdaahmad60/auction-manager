@@ -419,7 +419,7 @@ function selectSheetPlayer(id) {
     document.getElementById('pNameInput').dataset.playerId = String(player.id);
     const type = document.getElementById('pTypeInput');
     if ([...type.options].some(option => option.value === player.role)) type.value = player.role;
-    state.currentPlayer = { id: player.id, name: player.name, photo: player.photo || '', role: player.role || 'Player', serial: player.serial || null, village:player.village || '', panchayat:player.panchayat || '', introValues: selectedIntroValues(player), photoAlignment: state.photoAlignments?.[String(player.id)] || 'top', phase:'intro' };
+    state.currentPlayer = { id: player.id, name: player.name, photo: player.photo || '', role: player.role || 'Player', category: player.category || '', serial: player.serial || null, village:player.village || '', panchayat:player.panchayat || '', introValues: selectedIntroValues(player), photoAlignment: state.photoAlignments?.[String(player.id)] || 'top', phase:'intro' };
     applyPlayerBasePrice(player);
     renderOverlayPlayer(state.currentPlayer);
     if (activeConn) activeConn.send({ type: 'BID_UPDATE', base: state.basePrice, bid: state.currentBid, player: state.currentPlayer });
@@ -1528,6 +1528,7 @@ function renderPhotoAlignmentControls() {
 
 function updateSettings() {
     state.settings.theme = document.getElementById('overlayTheme').value;
+    state.settings.isplView = document.getElementById('isplView').value;
     state.settings.showPurse = document.getElementById('setPurse').checked;
     state.settings.showNames = document.getElementById('setNames').checked;
     state.settings.showBidding = document.getElementById('setBidding').checked;
@@ -1543,7 +1544,9 @@ function updateOverlayTeamVisibility(teamIdx, checked) {
 
 function renderEverything() {
     document.getElementById('customStepInput').value = state.bidIncrement || 50000;
-    document.getElementById('overlayTheme').value = state.settings.theme === 'mmm' ? 'mmm' : 'classic';
+    document.getElementById('overlayTheme').value = ['mmm','ispl'].includes(state.settings.theme) ? state.settings.theme : 'classic';
+    document.getElementById('ispl-controls').hidden = state.settings.theme !== 'ispl';
+    document.getElementById('isplView').value = state.settings.isplView || 'player';
     renderSetup();
     renderPricingSetup();
     renderDropdown();
@@ -1915,7 +1918,7 @@ function syncToDisplay(target = activeConn) {
         purse: t.maxPurse - t.playerList.reduce((sum, p) => sum + p.price, 0),
         playerList: t.playerList.map(p => ({ name: p.name, price: p.price, type: p.type }))
     }));
-    target.send({ type: 'SYNC_ALL', teams: displayTeams, settings: state.settings, base: state.basePrice, bid: state.currentBid, currentPlayer: state.currentPlayer });
+    target.send({ type: 'SYNC_ALL', teams: displayTeams, settings: { ...state.settings, tournamentName: activeTournament?.name || 'Tournament' }, base: state.basePrice, bid: state.currentBid, currentPlayer: state.currentPlayer });
 }
 
 function sendBidOnly() {
