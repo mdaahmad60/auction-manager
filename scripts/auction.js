@@ -1073,10 +1073,8 @@ function handleOverviewUpdate(data) {
         ovData = data;
         renderPlayersPane(data);
         renderTeamsPane(data);
-        updateOvLiveBanner(data.currentPlayer, data.base, data.bid, data.introFields);
         handleOvLiveSync(data);
     } else if (data.type === 'OVERVIEW_BID') {
-        updateOvLiveBanner(data.player, data.base, data.bid, data.introFields);
         handleOvLiveBid(data);
     }
 }
@@ -1116,31 +1114,6 @@ function switchOvTab(tab) {
         document.getElementById(`ov-${name}-pane`).classList.toggle('active', tab === name);
         document.getElementById(`ov-tab-${name}`).classList.toggle('active', tab === name);
     }
-}
-
-function updateOvLiveBanner(player, base, bid, introFields) {
-    const banner = document.getElementById('ov-live-banner');
-    if (!banner) return;
-    if (!player || !player.name) {
-        banner.style.display = 'none';
-        banner.replaceChildren();
-        return;
-    }
-    const facts = getMMMIntroFacts(player, {introFields: introFields ?? ovData?.introFields}, base);
-    const photo = player.photo
-        ? `<img class="ov-live-photo" src="${escapeHTML(player.photo)}" alt="${escapeHTML(player.name)}" style="object-position:center ${getPhotoAlignment(player)}" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
-    const content = `${photo}<div class="ov-live-photo ov-player-fallback" style="${player.photo ? 'display:none' : 'display:flex'}">${escapeHTML(player.name.trim().charAt(0).toUpperCase())}</div>
-        <div class="ov-live-info">
-            <div class="ov-live-label">On the Block · Live Auction</div>
-            <div class="ov-live-player-name">${escapeHTML(player.name)}</div>
-            <dl class="ov-live-facts">${facts.map(fact => `<div><dt>${escapeHTML(fact.label)}</dt><dd>${escapeHTML(fact.value)}</dd></div>`).join('')}</dl>
-        </div>
-        <div class="ov-live-amounts">
-            <div class="ov-live-bid-amount">₹ ${(bid || base || 0).toLocaleString('en-IN')}</div>
-            <div class="ov-live-bid-label">${bid ? 'Current Bid' : 'Base Price'}</div>
-        </div>`;
-    banner.style.display = 'flex';
-    banner.innerHTML = content;
 }
 
 function handleOvLiveSync(data) {

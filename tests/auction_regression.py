@@ -199,30 +199,48 @@ if error.value:
 print(describe(result))
 
 # Overview rendering and checkbox selection must agree for initial sync and bid updates.
-overview_source = '\n'.join(re.search(r'function ' + name + r'\([^\n]*\) \{[\s\S]*?\n\}', script).group(0) for name in ['switchOvTab', 'updateOvLiveBanner', 'escapeHTML', 'playerAge'])
+overview_source = '\n'.join(re.search(r'function ' + name + r'\([^\n]*\) \{[\s\S]*?\n\}', script).group(0) for name in [
+    'switchOvTab', 'buildSoldLookup', 'handleOvLiveSync', 'handleOvLiveBid', 'armOvLiveResultTimer',
+    'renderLiveAuctionPane', 'renderOvLivePhotoHtml', 'renderOvLiveStageHtml', 'renderOvLiveResultHtml',
+    'escapeHTML', 'playerAge'
+])
 mmm_source = (Path(__file__).resolve().parents[1] / 'themes/mmm.js').read_text()
 overview_source += '\n' + mmm_source[:mmm_source.index('function renderMMM()')]
 overview_tests = r'''
 const nodes = {};
 const document = {getElementById(id) { return nodes[id] ||= {style:{}, innerHTML:'', replaceChildren(){this.innerHTML='';}, classList:{toggle(_, value){this.active=value;}}}; }};
-const ovData = {introFields:[{key:'village',label:'Village'}]};
+let ovData = {introFields:[{key:'village',label:'Village'}]};
+let ovLiveLastPlayer = null, ovLiveResult = null, ovLiveResultTimer = null;
+let expire;
+const setTimeout = fn => {expire = fn; return 1;};
+const clearTimeout = () => {};
 function check(ok, message) {if (!ok) throw new Error(message);}
-const player = {name:'A <B>',photo:'player.jpg',introValues:{village:'Town',secret:'Hidden'}};
-updateOvLiveBanner(player, 100, 200, [{key:'village',label:'Village'}, {key:'basePrice',label:'Base price'}]);
-const banner = nodes['ov-live-banner'];
-check(banner.innerHTML.includes('player.jpg') && banner.innerHTML.includes('A &lt;B&gt;'), 'Photo and escaped player name');
-check(banner.innerHTML.includes('Town') && banner.innerHTML.includes('Base price') && !banner.innerHTML.includes('Hidden'), 'Only selected metadata shown');
+const player = {name:'A <B>',photo:'player.jpg',role:'Batsman',serial:7,introValues:{village:'Town',secret:'Hidden'}};
 
-updateOvLiveBanner(player,100,300,[]);
-check(!banner.innerHTML.includes('Town') && banner.innerHTML.includes('300'), 'Unchecking fields and changing bid updates card');
+handleOvLiveSync({type:'OVERVIEW_SYNC', introFields:[{key:'village',label:'Village'}, {key:'basePrice',label:'Base price'}], teams:[], allPlayers:[], soldSerials:[], unsoldSerials:[], currentPlayer:player, base:100, bid:200});
+const pane = nodes['ov-live-pane'];
+check(pane.innerHTML.includes('player.jpg') && pane.innerHTML.includes('A &lt;B&gt;'), 'Photo and escaped player name');
+check(pane.innerHTML.includes('Town') && pane.innerHTML.includes('Base price') && !pane.innerHTML.includes('Hidden'), 'Only selected metadata shown');
+
+handleOvLiveBid({type:'OVERVIEW_BID', introFields:[], player, base:100, bid:300});
+check(pane.innerHTML.includes('300'), 'Bid-only update changes card without a full resync');
+
 switchOvTab('teams');
-check(nodes['ov-teams-pane'].classList.active && !nodes['ov-players-pane'].classList.active, 'Overview tab selection');
-updateOvLiveBanner(null,0,0,[]);
-check(banner.style.display === 'none' && !banner.innerHTML, 'Cleared player removes stale details');
+check(nodes['ov-teams-pane'].classList.active && !nodes['ov-players-pane'].classList.active && !nodes['ov-live-pane'].classList.active, 'Overview tab selection');
+
+handleOvLiveSync({type:'OVERVIEW_SYNC', introFields:[], teams:[{name:'Titans', playerList:[{name:'A <B>', price:500, sourceSerial:7}]}], allPlayers:[], soldSerials:[7], unsoldSerials:[], currentPlayer:null, base:0, bid:0});
+check(pane.innerHTML.includes('SOLD') && pane.innerHTML.includes('Titans') && pane.innerHTML.includes('500'), 'Sold reveal shows winning team and price');
+expire();
+check(pane.innerHTML.includes('No player is currently up for auction'), 'Sold reveal clears back to empty state after its timer');
+
+handleOvLiveSync({type:'OVERVIEW_SYNC', introFields:[], teams:[], allPlayers:[], soldSerials:[], unsoldSerials:[], currentPlayer:{name:'Bob',serial:9}, base:50, bid:0});
+handleOvLiveSync({type:'OVERVIEW_SYNC', introFields:[], teams:[], allPlayers:[], soldSerials:[], unsoldSerials:[9], currentPlayer:null, base:0, bid:0});
+check(pane.innerHTML.includes('UNSOLD') && pane.innerHTML.includes('Bob'), 'Unsold reveal shows the player who went unsold');
+
 check(playerAge('2005-12-31',2026) === '21' && playerAge('31/12/2005',2026) === '21', 'DOB uses calendar year');
 check(playerAge('20',2026) === '20' && playerAge('',2026) === '', 'Explicit and missing age');
 check(playerAge('2025-02-29',2026) === '' && playerAge('2028-01-01',2026) === '', 'Invalid and future DOB');
-return 'PASS: overview details, selected fields, tabs, bids, empty state and DOB ages';
+return 'PASS: overview details, selected fields, tabs, bids, sold/unsold reveal and DOB ages';
 '''
 error = ptr()
 result = js.JSEvaluateScript(ctx, string('(function(){' + overview_source + overview_tests + '})()'), None, None, 1, ctypes.byref(error))
