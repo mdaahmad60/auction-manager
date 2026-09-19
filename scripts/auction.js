@@ -918,7 +918,9 @@ let state = {
     basePrice: 0,
     currentPlayer: null,
     settings: { showPurse: true, showNames: true, showBidding: true, showTopPlayers: false, teamVisibility: [] },
-    unsoldPlayers: []
+    unsoldPlayers: [],
+    minSquadEnabled: false,
+    minSquadSize: 15
 };
 
 let storageWarningShown = false;
@@ -1408,6 +1410,8 @@ function factoryReset() {
         state.bidIncrement = 50000;
         state.currentBid = 0;
         state.basePrice = 0;
+        state.minSquadEnabled = false;
+        state.minSquadSize = 15;
         state.settings = { showPurse: true, showNames: true, showBidding: true, showTopPlayers: false, teamVisibility: [] };
         initTeams();
         if (activeConn) { activeConn.send({ type: 'RESET_VIEW' }); syncToDisplay(); sendBidOnly(); }
@@ -1735,6 +1739,35 @@ function updateCategoryBasePrice(category, value) {
     saveAndAction();
 }
 
+function updateMinSquadSetting() {
+    const enabled = document.getElementById('minSquadEnabled').checked;
+    const size = Number(document.getElementById('minSquadSize').value);
+    if (enabled && (!Number.isSafeInteger(size) || size < 1)) { renderEverything(); return alert('Enter a whole minimum squad size of at least 1.'); }
+    state.minSquadEnabled = enabled;
+    if (Number.isSafeInteger(size) && size >= 1) state.minSquadSize = size;
+    saveAndAction();
+}
+
+// The cheapest a remaining slot could possibly cost, used as the safe worst-case bound for the minimum-squad warning.
+function minimumPossibleBasePrice() {
+    const global = state.globalBasePrice ?? state.basePrice ?? 0;
+    if (state.basePriceMode !== 'category') return global;
+    const categoryPrices = Object.values(state.categoryBasePrices || {});
+    return categoryPrices.length ? Math.min(global, ...categoryPrices) : global;
+}
+
+// Null when the sale is safe; otherwise a message describing the shortfall for a confirm() warning.
+function minSquadShortfallWarning(team, saleAmount) {
+    if (!state.minSquadEnabled || !(state.minSquadSize > 0)) return null;
+    const stillNeeded = state.minSquadSize - (team.playerList.length + 1);
+    if (stillNeeded <= 0) return null;
+    const spent = team.playerList.reduce((sum, p) => sum + p.price, 0);
+    const remainingAfter = team.maxPurse - spent - saleAmount;
+    const required = stillNeeded * minimumPossibleBasePrice();
+    if (remainingAfter >= required) return null;
+    return `${team.name} would have ₹${remainingAfter.toLocaleString('en-IN')} left for ${stillNeeded} more required player${stillNeeded === 1 ? '' : 's'} (needs at least ₹${required.toLocaleString('en-IN')} at base price to reach a ${state.minSquadSize}-player squad).`;
+}
+
 function bidStepFor(amount) {
     const range = (state.bidRanges || []).find(row => amount >= row.from && (row.to === null || amount < row.to));
     return range ? range.increment : state.bidIncrement || 50000;
@@ -1790,6 +1823,9 @@ function renderPricingSetup() {
     });
     document.getElementById('bid-increment-ranges').innerHTML = (state.bidRanges || []).map((row,index) => `<div class="pricing-range-row">${[['from','From (₹)'],['to','To (₹)'],['increment','Increment (₹)']].map(([key,label]) => `<label>${label}<input type="number" min="${key === 'increment' ? 1 : 0}" step="1" value="${row[key] ?? ''}" placeholder="${key === 'to' ? 'No limit' : ''}" onchange="updateBidRange(${index}, '${key}', this.value)"></label>`).join('')}<button type="button" onclick="removeBidRange(${index})">Remove</button></div>`).join('');
     document.getElementById('active-pricing-summary').textContent = `Player base: ₹ ${state.basePrice.toLocaleString('en-IN')} · Current step: ₹ ${bidStepFor(state.currentBid).toLocaleString('en-IN')}`;
+    document.getElementById('minSquadEnabled').checked = !!state.minSquadEnabled;
+    document.getElementById('min-squad-controls').hidden = !state.minSquadEnabled;
+    document.getElementById('minSquadSize').value = state.minSquadSize || 15;
 }
 
 function updateBasePrice(val) {
@@ -1840,6 +1876,8 @@ function handleSold() {
     if (!team || !Number.isSafeInteger(team.maxPurse)) return alert('Select a team with a valid purse.');
     const spent = team.playerList.reduce((sum, p) => sum + p.price, 0);
     if ((team.maxPurse - spent) < state.currentBid) return alert("Insufficient Funds!");
+    const squadWarning = minSquadShortfallWarning(team, state.currentBid);
+    if (squadWarning && !confirm(`⚠️ ${squadWarning}\n\nSell anyway?`)) return;
     if (existingUnsoldIndex !== -1) state.unsoldPlayers.splice(existingUnsoldIndex, 1);
     team.playerList.push({ id: Date.now().toString(), seq: state.globalSeq++, sourceId: selectedPlayerId || '', sourceSerial: selectedPlayer ? selectedPlayer.serial : null, name, type, price: state.currentBid });
     if (activeConn) activeConn.send({ type: 'SOLD_CELEBRATION', bid: state.currentBid, team: team.name, logo: team.logo || '', player: name, playerDetails: state.currentPlayer || { name, role:type } });

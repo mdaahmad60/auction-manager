@@ -29,7 +29,7 @@ def describe(value):
 error = ptr()
 assert js.JSCheckScriptSyntax(ctx, string(script), None, 1, ctypes.byref(error)), describe(error)
 print('PASS: full inline script syntax')
-functions = ['stablePlayerId', 'reconcilePlayerReferences', 'handleSold', 'handleUnsold', 'manualBidChange', 'updateTeamData', 'removePlayer', 'csvCell', 'parseCSV', 'driveThumbnail', 'escapeHTML']
+functions = ['stablePlayerId', 'reconcilePlayerReferences', 'handleSold', 'handleUnsold', 'manualBidChange', 'updateTeamData', 'removePlayer', 'csvCell', 'parseCSV', 'driveThumbnail', 'escapeHTML', 'minSquadShortfallWarning', 'minimumPossibleBasePrice']
 source = '\n'.join(re.search(r'function ' + name + r'\([^\n]*\) \{[\s\S]*?\n\}', script).group(0) for name in functions)
 tests = r'''
 let checks = 0;
@@ -73,6 +73,32 @@ assert(parseCSV(['Name','A "quoted", name'].map(csvCell).join(','))[0][1] === 'A
 assert(csvCell('=1+1') === '"\'=1+1"', 'CSV formula neutralized');
 assert(driveThumbnail('https://drive.google.com/file/d/abc_123/view').includes('/abc_123='), 'Template Drive photo link supported');
 assert(escapeHTML('"<x>') === '&quot;&lt;x&gt;', 'Attribute escaping');
+
+// Minimum squad size safeguard: warns (but does not silently block) a sale that would leave a team
+// unable to afford its remaining required slots at base price, and only when the toggle is enabled.
+let confirmed = null, confirmCalls = 0;
+const confirm = message => { confirmCalls++; return confirmed; };
+function freshWarriors() { return [{name:'Warriors', maxPurse:1000, playerList:[{price:100},{price:100},{price:100},{price:100},{price:100}]}]; }
+function selectZara() { fields.pNameInput.value = 'Zara'; fields.pNameInput.dataset.playerId = '99'; fields.winSelect.value = '0'; }
+sheetPlayers = [{id:99, serial:9, name:'Zara'}];
+state.globalBasePrice = 40; state.basePriceMode = 'global'; state.basePrice = 40;
+state.minSquadEnabled = false; state.minSquadSize = 15;
+selectZara(); state.teams = freshWarriors(); state.currentBid = 200; confirmed = null; confirmCalls = 0;
+handleSold();
+assert(state.teams[0].playerList.length === 6 && confirmCalls === 0, 'Disabled squad limit never prompts or blocks, even with a real shortfall');
+state.minSquadEnabled = true;
+selectZara(); state.teams = freshWarriors(); state.currentBid = 200; confirmed = false; confirmCalls = 0;
+handleSold();
+assert(state.teams[0].playerList.length === 5 && confirmCalls === 1, 'Declining the shortfall warning leaves the sale unmade');
+selectZara(); state.teams = freshWarriors(); state.currentBid = 200; confirmed = true; confirmCalls = 0;
+handleSold();
+assert(state.teams[0].playerList.length === 6 && confirmCalls === 1, 'Confirming the shortfall warning still completes the sale');
+selectZara(); state.teams = freshWarriors(); state.currentBid = 100; confirmed = null; confirmCalls = 0;
+handleSold();
+assert(state.teams[0].playerList.length === 6 && confirmCalls === 0, 'A sale that leaves enough for the remaining squad never prompts');
+assert(minimumPossibleBasePrice() === 40, 'Global mode uses the global base price as the safe floor');
+state.basePriceMode = 'category'; state.categoryBasePrices = {A: 60, B: 20};
+assert(minimumPossibleBasePrice() === 20, 'Category mode uses the cheapest configured category (or global) as the safe floor');
 'PASS: ' + checks + ' auction regression checks';
 '''
 error = ptr()

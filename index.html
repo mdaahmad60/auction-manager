@@ -1260,6 +1260,18 @@ body { margin: 0; padding: 0; }
             <button type="button" onclick="addBidRange()">+ Add range</button>
 
         </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+            <label class="directory-unsold-switch" for="minSquadEnabled">
+                <input id="minSquadEnabled" type="checkbox" role="switch" autocomplete="off" onchange="updateMinSquadSetting()">
+                <span class="directory-switch-track" aria-hidden="true"></span>
+                <span>Minimum player limit</span>
+            </label>
+            <div id="min-squad-controls" hidden style="margin-top:10px;">
+                <label for="minSquadSize">Minimum squad size per team</label>
+                <input type="number" id="minSquadSize" min="1" step="1" onchange="updateMinSquadSetting()">
+                <p style="font-size:12px;color:#666;margin:6px 0 0">When marking a player sold, you'll be warned if the winning team wouldn't have enough purse left to fill every remaining required slot at base price — you can still confirm the sale if you want to proceed.</p>
+            </div>
+        </div>
         <div class="btn-group">
             <button class="btn-connect" style="background:#6f42c1;" onclick="applyAndSync()">APPLY & SYNC</button>
             <button style="background:#198754; color:white;" onclick="exportCSV()">DOWNLOAD CSV</button>
