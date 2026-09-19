@@ -171,7 +171,7 @@ function loadAuctionScript() {
 async function startAccountApp() {
     const config=window.APP_CONFIG || {};
     const params=new URLSearchParams(location.search);
-    if (params.has('overlay') || params.has('overview') || config.localMode === true) {
+    if (params.has('overlay') || params.has('overlayLive') || params.has('overview') || config.localMode === true) {
         window.auctionStorage = config.localMode ? localStorage : new WorkspaceStore({save:async()=>0,cache:()=>{}});
         document.getElementById('auth-screen').hidden=true;
         await loadAuctionScript();return;

@@ -968,39 +968,40 @@ ctrlPeer.on('connection', conn => {
 ctrlPeer.on('error', err => console.warn('Controller peer error:', err));
 
 if (window.APP_CONFIG?.liveOverview === 'cloudflare') {
-    const liveRoom = tournamentPeerId(activeTournament.id, 'overlayLive');
-    overlayLiveUrl = `${window.location.origin}${window.location.pathname}?overlayLive=${liveRoom}`;
-    const card = document.getElementById('overlay-live-card');
-    if (card) card.style.display = '';
-    const urlBox = document.getElementById('overlay-live-url-display');
-    const copyBtn = document.getElementById('copyOverlayLiveLinkBtn');
-    if (urlBox) urlBox.textContent = overlayLiveUrl;
-    if (copyBtn) copyBtn.disabled = false;
-    cloudOverlay = new CloudOverviewConnection(liveRoom, {
-        publisher: true,
-        syncType: 'SYNC_ALL',
-        deltaType: 'BID_UPDATE',
-        emptyMessage: {type:'RESET_VIEW'},
-        snapshot: conn => syncToDisplay(conn),
-        onStatus: (_, text) => {
-            const statusEl = document.getElementById('overlay-live-conn-status');
-            if (statusEl) statusEl.textContent = text;
-        }
-    });
+    document.getElementById('overlay-live-card').style.display = '';
+    cloudTournamentRoom(activeTournament.id, 'overlayLive').then(liveRoom => {
+        overlayLiveUrl = `${window.location.origin}${window.location.pathname}?overlayLive=${liveRoom}`;
+        const urlBox = document.getElementById('overlay-live-url-display');
+        const copyBtn = document.getElementById('copyOverlayLiveLinkBtn');
+        if (urlBox) urlBox.textContent = overlayLiveUrl;
+        if (copyBtn) copyBtn.disabled = false;
+        cloudOverlay = new CloudOverviewConnection(liveRoom, {
+            publisher: true,
+            syncType: 'SYNC_ALL',
+            deltaType: 'BID_UPDATE',
+            emptyMessage: {type:'RESET_VIEW'},
+            snapshot: conn => syncToDisplay(conn),
+            onStatus: (_, text) => {
+                const statusEl = document.getElementById('overlay-live-conn-status');
+                if (statusEl) statusEl.textContent = text;
+            }
+        });
+    }).catch(error => { document.getElementById('overlay-live-conn-status').textContent = error.message; });
 }
 
 let overviewPeer;
 if (window.APP_CONFIG?.liveOverview === 'cloudflare') {
-    const room = tournamentPeerId(activeTournament.id, 'overview');
-    overviewUrl = `${window.location.origin}${window.location.pathname}?overview=${room}`;
-    document.getElementById('overview-url-display').textContent = overviewUrl;
-    document.getElementById('copyOverviewLinkBtn').disabled = false;
-    cloudOverview = new CloudOverviewConnection(room, {
-        publisher: true,
-        snapshot: conn => sendOverviewSync(conn),
-        onStatus: (_, text) => { document.getElementById('overview-conn-status').textContent = text; }
-    });
-    overviewPeer = {destroy:()=>cloudOverview.close()};
+    overviewPeer = {destroy:()=>cloudOverview?.close()};
+    cloudTournamentRoom(activeTournament.id, 'overview').then(room => {
+        overviewUrl = `${window.location.origin}${window.location.pathname}?overview=${room}`;
+        document.getElementById('overview-url-display').textContent = overviewUrl;
+        document.getElementById('copyOverviewLinkBtn').disabled = false;
+        cloudOverview = new CloudOverviewConnection(room, {
+            publisher: true,
+            snapshot: conn => sendOverviewSync(conn),
+            onStatus: (_, text) => { document.getElementById('overview-conn-status').textContent = text; }
+        });
+    }).catch(error => { document.getElementById('overview-conn-status').textContent = error.message; });
 } else {
 overviewPeer = new AuctionPeer(tournamentPeerId(activeTournament.id, 'overview'));
 overviewPeer.on('open', id => {
@@ -1165,6 +1166,7 @@ function switchOvTab(tab) {
 }
 
 function handleOvLiveSync(data) {
+    ovData = data;
     const soldSet = new Set(data.soldSerials || []);
     const unsoldSet = new Set(data.unsoldSerials || []);
     const player = data.currentPlayer;
@@ -1188,6 +1190,14 @@ function handleOvLiveSync(data) {
 }
 
 function handleOvLiveBid(data) {
+    ovData = {...(ovData || {}), currentPlayer:data.player, base:data.base, bid:data.bid,
+        introFields:data.introFields ?? ovData?.introFields};
+    if (data.player && data.player.name) {
+        // Player selection can arrive as a compact delta during a result reveal.
+        if (ovLiveResultTimer) clearTimeout(ovLiveResultTimer);
+        ovLiveResultTimer = null;
+        ovLiveResult = null;
+    }
     if (ovLiveResult) return;
     if (data.player && data.player.name) ovLiveLastPlayer = data.player;
     renderLiveAuctionPane({ currentPlayer: data.player, base: data.base, bid: data.bid, introFields: data.introFields });

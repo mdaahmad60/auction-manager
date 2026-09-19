@@ -16,6 +16,7 @@
     "test:cloudflare": "wrangler deploy --dry-run --outdir .wrangler/test-bundle && node tests/cloudflare-integration.mjs .wrangler/test-bundle/worker.js"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "miniflare": "4.20260730.0",
     "wrangler": "4.135.0",
     "ws": "8.21.3"

@@ -25,14 +25,11 @@ export async function authorizePublisher(env, token, room, fetcher = fetch) {
   if (!auth.ok) throw new Error('Invalid session');
   const user = await auth.json();
   if (!user.id) throw new Error('Invalid user');
-  const result = await fetcher(`${env.SUPABASE_URL}/rest/v1/auction_workspaces?user_id=eq.${encodeURIComponent(user.id)}&select=snapshot`, {headers});
-  if (!result.ok) throw new Error('Workspace unavailable');
-  const rows = await result.json();
-  const snapshot = rows[0]?.snapshot || {};
-  const tournaments = JSON.parse(snapshot.auc_tournaments_v1 || '[]');
-  // A tournament's overview room and its "overlay via Internet" room are separate rooms; either may publish here.
-  const ownsRoom = t => ['overview-peer','overlayLive-peer'].some(suffix => snapshot[`auc_tournament_${t.id}_${suffix}`] === room);
-  if (!Array.isArray(tournaments) || !tournaments.some(ownsRoom)) throw new Error('You do not own this overview');
+  const result = await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/can_publish_auction_room`, {
+    method:'POST', headers:{...headers,'Content-Type':'application/json'}, body:JSON.stringify({p_room_id:room})
+  });
+  if (!result.ok) throw new Error('Room authorization unavailable. Check the live-room migration.');
+  if (await result.json() !== true) throw new Error('You do not own this live room');
   // Supabase validated this token above; use its expiry only after that check.
   const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
   const expires = Number(payload.exp) * 1000;

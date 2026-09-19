@@ -40,3 +40,17 @@ test('new password is updated before opening workspace',async()=>{
 test('missing production configuration leaves login blocked',()=>{
   const {node}=harness();assert.equal(node('auth-submit').disabled,true);assert.match(node('auth-message').textContent,/configuration is missing/);
 });
+
+test('signed-out Internet overlay opens as a public viewer without creating an auth client',async()=>{
+  const nodes=new Map();let loaded=false;
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',dataset:{}});return nodes.get(id);};
+  const context=vm.createContext({console,URL,URLSearchParams,setTimeout,clearTimeout,WorkspaceStore:class {},
+    location:{origin:'https://auction.example',pathname:'/',search:'?overlayLive=auction-test'},
+    window:{APP_CONFIG:{liveOverview:'cloudflare'},addEventListener(){}},
+    document:{getElementById:node,addEventListener(){},createElement:()=>({}),body:{appendChild(script){loaded=true;script.onload();}}}});
+  vm.runInContext(source,context);
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(loaded,true);
+  assert.equal(node('auth-screen').hidden,true);
+  assert.equal(vm.runInContext('Account.client',context),null);
+});

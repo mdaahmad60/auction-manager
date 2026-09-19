@@ -11,6 +11,18 @@ function tournamentPeerId(id, role) {
     }
     return peerId;
 }
+async function cloudTournamentRoom(id, kind) {
+    if (!id || !['overview', 'overlayLive'].includes(kind)) throw new Error('Invalid live room.');
+    await Account.store.flush();
+    const {data, error} = await Account.client.rpc('get_auction_live_room', {p_tournament_id:id, p_kind:kind});
+    if (error) throw new Error('Could not prepare the live room. Check the Supabase live-room migration and retry.');
+    if (typeof data !== 'string' || !/^auction-[a-zA-Z0-9-]{1,100}$/.test(data)) throw new Error('Invalid live room response.');
+    if (!readTournamentIndex().some(t => t.id === id)) throw new Error('Tournament was deleted.');
+    getAuctionStorage().setItem(tournamentStorageKey(id, kind + '-peer'), data);
+    await Account.store.flush();
+    return data;
+}
+
 function readTournamentIndex() {
     const raw = getAuctionStorage().getItem(TOURNAMENT_INDEX_KEY);
     if (!raw) return [];
@@ -112,13 +124,16 @@ async function deleteTournament(id) {
         if (!tournament) { initTournamentHome(); return; }
         if (!confirm(`Delete “${tournament.name}”?\n\nThis permanently removes its saved auction, players, settings and links from this browser. This cannot be undone.`)) return;
         if (window.APP_CONFIG?.liveOverview === 'cloudflare') {
-            const room = getAuctionStorage().getItem(tournamentStorageKey(id, 'overview-peer'));
-            if (room) {
-                await Account.store.flush();
-                const {data,error} = await Account.client.auth.getSession();
-                if (error || !data.session) throw new Error('Sign in again before deleting.');
+            await Account.store.flush();
+            // The registry also includes rooms allocated before a browser saved its local link.
+            const {data: rooms, error: roomError} = await Account.client.from('auction_live_rooms')
+                .select('room_id').eq('tournament_id', id);
+            if (roomError || !Array.isArray(rooms)) throw new Error('Could not load the live rooms. Please retry.');
+            const {data,error} = await Account.client.auth.getSession();
+            if (error || !data.session) throw new Error('Sign in again before deleting.');
+            for (const {room_id: room} of rooms) {
                 const response = await fetch(`/api/live/${encodeURIComponent(room)}`, {method:'DELETE',headers:{Authorization:`Bearer ${data.session.access_token}`}});
-                if (!response.ok) throw new Error('Could not remove the public overview. Please retry.');
+                if (!response.ok) throw new Error('Could not remove all public live rooms. Please retry.');
             }
         }
         deleteTournamentRecord(id);

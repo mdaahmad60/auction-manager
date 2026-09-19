@@ -21,6 +21,11 @@ export class AuctionRoom extends DurableObject {
     this.ctx = ctx; this.env = env;
     ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS overview (id INTEGER PRIMARY KEY, data TEXT NOT NULL)');
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+    // Connections authenticated before the ownership migration must authenticate again.
+    for (const socket of ctx.getWebSockets()) {
+      const attachment = socket.deserializeAttachment();
+      if (attachment?.role === 'publisher' && attachment.authVersion !== 2) socket.close(4003, 'Reauthenticate');
+    }
   }
   snapshot() {
     const row = [...this.ctx.storage.sql.exec('SELECT data FROM overview WHERE id = 1')][0];
@@ -77,14 +82,14 @@ export class AuctionRoom extends DurableObject {
         if (await this.ctx.storage.get('deleted')) throw new Error('Tournament deleted');
         // One controller at a time prevents competing auction state.
         for (const other of this.ctx.getWebSockets()) if (other !== socket && other.deserializeAttachment()?.role === 'publisher') other.close(4001, 'Another controller connected');
-        socket.serializeAttachment({...attachment,role:'publisher',expires});
+        socket.serializeAttachment({...attachment,role:'publisher',expires,authVersion:2});
         socket.send(JSON.stringify({type:'READY'}));
         this.broadcast({type:'LIVE_STATUS',connected:true});
         const alarm = await this.ctx.storage.getAlarm();
         if (!alarm || expires < alarm) await this.ctx.storage.setAlarm(expires);
         return;
       }
-      if (attachment.role !== 'publisher' || attachment.expires <= Date.now()) throw new Error('Read-only or expired connection');
+      if (attachment.role !== 'publisher' || attachment.authVersion !== 2 || attachment.expires <= Date.now()) throw new Error('Read-only or expired connection');
       validateMessage(data);
       const previous = this.snapshot();
       if (['OVERVIEW_BID','BID_UPDATE','BACKGROUND_BID_UPDATE'].includes(data.type) && !previous) throw new Error('Full snapshot required first');

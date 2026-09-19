@@ -13,7 +13,7 @@ const mf = new Miniflare({workers:[{name:'auction-test-worker',
   outboundService:request=>{
     if (request.headers.get('Authorization') !== `Bearer ${token}`) return new Response('denied',{status:401});
     if (new URL(request.url).pathname === '/auth/v1/user') return Response.json({id:'owner'});
-    return Response.json([{snapshot:{auc_tournaments_v1:'[{"id":"t"}]','auc_tournament_t_overview-peer':'auction-test','auc_tournament_t_overlayLive-peer':'auction-overlay-live'}}]);
+    return request.json().then(body=>Response.json(['auction-test','auction-overlay-live'].includes(body.p_room_id)));
   }
 }]});
 const sockets=[];
@@ -67,6 +67,14 @@ try {
   const overlayLateJoiner=await connect('auction-overlay-live');
   await until(()=>overlayLateJoiner.received.some(m=>m.type==='SYNC_ALL' && m.bid===250));
   assert.ok(!overlayLateJoiner.received.some(m=>m.type==='SOLD_CELEBRATION'), 'Late joiner must not replay a stale sold celebration');
+  for (const room of ['auction-test','auction-overlay-live']) {
+    const denied = await mf.dispatchFetch(`http://localhost/api/live/${room}`, {method:'DELETE',headers:{Origin:'http://localhost',Authorization:'Bearer invalid'}});
+    assert.equal(denied.status,403);
+    const deleted = await mf.dispatchFetch(`http://localhost/api/live/${room}`, {method:'DELETE',headers:{Origin:'http://localhost',Authorization:`Bearer ${token}`}});
+    assert.equal(deleted.status,204);
+    const reconnect = await mf.dispatchFetch(`http://localhost/api/live/${room}`,{headers:{Upgrade:'websocket',Origin:'http://localhost'}});
+    assert.equal(reconnect.status,410);
+  }
   console.log('PASS: local Cloudflare runtime — 500 viewers, bid broadcast, reconnect snapshot, origin checks, read-only enforcement, room ownership and offline status');
   console.log('PASS: overlay-via-Internet room — separate peer id, SYNC_ALL/BID_UPDATE persisted, celebration cues broadcast-only');
 } finally {
