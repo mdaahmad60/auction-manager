@@ -1,0 +1,29 @@
+name: Deploy Cloudflare
+on:
+  workflow_dispatch:
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:cloudflare
+      - name: Set Worker runtime configuration
+        run: |
+          node -e 'process.stdout.write(JSON.stringify({SUPABASE_URL:process.env.SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY:process.env.SUPABASE_PUBLISHABLE_KEY}))' > "$RUNNER_TEMP/auction-worker-vars.json"
+          npx wrangler secret bulk "$RUNNER_TEMP/auction-worker-vars.json"
+      - run: npx wrangler deploy

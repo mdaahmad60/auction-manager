@@ -1,0 +1,142 @@
+/* MMM broadcast graphics, authored from the supplied transparent references. */
+#mmm-overlay { display:none; position:absolute; inset:0; pointer-events:none; color:#fff; font-family:'DM Sans',sans-serif; }
+#display-app[data-theme="mmm"] #left-panel { display:none !important; }
+#display-app[data-theme="mmm"] #mmm-overlay:not([hidden]) { display:block; }
+#display-app[data-theme="mmm"]:has(#mmm-overlay:not([hidden])) #sheet-ui { visibility:hidden; }
+.mmm-card { position:absolute; left:34px; bottom:38px; width:1120px; height:400px; filter:drop-shadow(0 3px 4px #1559ff80); }
+.mmm-portrait { position:absolute; left:0; bottom:0; width:286px; height:400px; border:7px solid #6015b6; border-radius:18px; overflow:hidden; background:linear-gradient(145deg,#eae7f0,#8c7cad); z-index:3; box-sizing:border-box; }
+.mmm-portrait img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+.mmm-initials { position:absolute; inset:0; display:grid; place-items:center; font:bold 100px 'Bebas Neue',sans-serif; color:#4c168a; }
+.mmm-portrait img { position:relative; z-index:1; }
+.mmm-info { position:absolute; left:280px; bottom:40px; width:840px; height:172px; border-radius:0 18px 18px 0; overflow:hidden; background:linear-gradient(110deg,#240691,#0c043b); }
+.mmm-heading { height:64px; padding:0 22px; display:flex; align-items:center; gap:24px; background:linear-gradient(105deg,#6017bc,#2a0962); }
+.mmm-name { font:52px/1 'Bebas Neue','Arial Narrow',sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.mmm-role { font:28px/1 'Bebas Neue','Arial Narrow',sans-serif; color:#f4ff39; max-width:220px; }
+.mmm-facts { height:108px; display:grid; grid-template-columns:1fr 1fr 240px; align-items:center; text-align:center; gap:12px; padding:0 18px; }
+.mmm-label { display:block; font:28px/1.2 'Bebas Neue','Arial Narrow',sans-serif; }
+.mmm-value { display:block; margin-top:6px; font-size:36px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mmm-ribbon,.mmm-caption,.mmm-unsold { display:none; }
+#mmm-overlay[data-phase="bidding"] .mmm-card { left:350px; bottom:28px; width:1240px; height:346px; }
+#mmm-overlay[data-phase="bidding"] .mmm-portrait { left:500px; bottom:54px; width:236px; height:292px; }
+#mmm-overlay[data-phase="bidding"] .mmm-info,#mmm-overlay[data-phase="sold"] .mmm-info,#mmm-overlay[data-phase="unsold"] .mmm-info { display:none; }
+.mmm-ribbon { position:absolute; left:0; right:0; bottom:58px; height:126px; border-radius:18px; overflow:hidden; background:linear-gradient(100deg,#0c033d,#270593,#0c033d); }
+#mmm-overlay[data-phase="bidding"] .mmm-ribbon { display:flex; justify-content:space-between; }
+.mmm-wing { width:500px; text-align:center; }
+.mmm-wing .mmm-label { padding:7px 12px; background:linear-gradient(110deg,#32106c,#5e15b9); }
+.mmm-wing .mmm-value { padding:10px; margin:0; }
+.mmm-caption { position:absolute; bottom:0; left:385px; width:454px; height:60px; border-radius:0 0 18px 18px; background:linear-gradient(110deg,#6017bc,#2a0962,#6017bc); z-index:4; text-align:center; padding:4px 18px; box-sizing:border-box; }
+#mmm-overlay[data-phase="bidding"] .mmm-caption,#mmm-overlay[data-phase="sold"] .mmm-caption { display:block; }
+.mmm-caption strong { display:block; font:30px/1.1 'Bebas Neue',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mmm-caption span { font:18px/1.2 'Bebas Neue',sans-serif; }
+#mmm-overlay[data-phase="sold"] .mmm-card { left:605px; bottom:28px; width:730px; height:282px; }
+#mmm-overlay[data-phase="sold"] .mmm-portrait { left:265px; bottom:54px; width:200px; height:228px; }
+#mmm-overlay[data-phase="sold"] .mmm-caption { left:210px; width:310px; }
+#mmm-overlay[data-phase="sold"] .mmm-ribbon { display:flex; align-items:center; justify-content:space-between; height:76px; bottom:58px; background:linear-gradient(100deg,#32106c,#6017bc,#32106c); }
+.mmm-team { display:flex; align-items:center; gap:16px; width:265px; padding-right:12px; box-sizing:border-box; }
+.mmm-team-name { font-size:24px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mmm-logo { width:76px; height:76px; flex-shrink:0; background:#505454; display:grid; place-items:center; font:32px 'Bebas Neue',sans-serif; }
+.mmm-logo img { width:62px; height:62px; object-fit:contain; }
+.mmm-sale { width:265px; display:flex; align-items:center; text-align:center; justify-content:flex-end; gap:12px; }
+.mmm-sale .mmm-label { color:#aaff00; font-size:20px; }
+.mmm-sale .mmm-value { font-size:28px; margin:0; }
+#mmm-overlay[data-phase="unsold"] .mmm-card { width:286px; }
+#mmm-overlay[data-phase="unsold"] .mmm-unsold { display:block; position:absolute; inset:65% 0 0; padding-top:32px; background:linear-gradient(transparent,#44031999); color:#ff1515; text-align:center; font:56px 'Bebas Neue',sans-serif; z-index:2; }
+#mmm-overlay [hidden] { display:none !important; }
+
+/* Keep the geometry mounted while opacity changes, so the portrait travels
+   between the introduction, bid and result positions without a screen cut. */
+#mmm-overlay .mmm-info { display:block !important; opacity:0; visibility:hidden; }
+#mmm-overlay[data-phase="intro"] .mmm-info { opacity:1; visibility:visible; }
+#mmm-overlay .mmm-caption { display:block; opacity:0; visibility:hidden; }
+#mmm-overlay[data-phase="bidding"] .mmm-caption,
+#mmm-overlay[data-phase="sold"] .mmm-caption { opacity:1; visibility:visible; }
+#mmm-overlay #mmm-bid-ribbon,
+#mmm-overlay #mmm-sale-ribbon { display:flex !important; opacity:1; visibility:visible; justify-content:space-between; }
+#mmm-overlay #mmm-bid-ribbon[hidden],
+#mmm-overlay #mmm-sale-ribbon[hidden] { opacity:0; visibility:hidden; }
+#mmm-overlay .mmm-unsold { display:block; position:absolute; inset:65% 0 0; padding-top:32px; background:linear-gradient(transparent,#44031999); color:#ff1515; text-align:center; font:56px 'Bebas Neue',sans-serif; z-index:2; opacity:0; visibility:hidden; }
+#mmm-overlay[data-phase="unsold"] .mmm-unsold { opacity:1; visibility:visible; }
+.mmm-caption { overflow:hidden; }
+.mmm-hammer { background:linear-gradient(145deg,#532589,#26103f); }
+.mmm-hammer svg { width:76px; height:76px; overflow:visible; }
+.mmm-hammer-tool { transform-origin:55px 49px; }
+.mmm-impact-ring { transform-origin:41px 60px; opacity:0; }
+.mmm-impact-sparks { opacity:0; }
+
+@media (prefers-reduced-motion:no-preference) {
+    #display-app[data-theme="mmm"] #mmm-overlay {
+        transition:opacity 280ms ease, display 280ms allow-discrete;
+        opacity:1;
+    }
+    #display-app[data-theme="mmm"] #mmm-overlay[hidden] { opacity:0; }
+    @starting-style { #display-app[data-theme="mmm"] #mmm-overlay:not([hidden]) { opacity:0; } }
+    .mmm-card, .mmm-portrait, .mmm-caption, .mmm-ribbon {
+        transition:left 650ms cubic-bezier(.22,1,.36,1), bottom 650ms cubic-bezier(.22,1,.36,1),
+            width 650ms cubic-bezier(.22,1,.36,1), height 650ms cubic-bezier(.22,1,.36,1),
+            opacity 300ms ease, visibility 300ms;
+    }
+    #mmm-overlay .mmm-info { transition:opacity 300ms ease, visibility 300ms; }
+    #mmm-overlay .mmm-unsold { transition:opacity 350ms ease 260ms, visibility 350ms; }
+    .mmm-info::after, .mmm-ribbon::after, .mmm-caption::after {
+        content:''; position:absolute; inset:0; pointer-events:none; z-index:5;
+        background:linear-gradient(110deg,transparent 30%,#ffffff05 40%,#ffffff26 50%,#ffffff05 60%,transparent 70%);
+        transform:translateX(-120%); animation:mmm-shimmer 5.5s ease-in-out infinite;
+    }
+    .mmm-caption::after { animation-delay:.18s; }
+    .mmm-portrait { animation:mmm-edge-glow 4s ease-in-out infinite; }
+    #mmm-overlay[data-phase="sold"] .mmm-hammer-tool { animation:mmm-hammer-strike 1.9s cubic-bezier(.4,0,.2,1) 3; }
+    #mmm-overlay[data-phase="sold"] .mmm-impact-ring { animation:mmm-impact-ring 1.9s ease-out 3; }
+    #mmm-overlay[data-phase="sold"] .mmm-impact-sparks { animation:mmm-impact-sparks 1.9s ease-out 3; }
+}
+@keyframes mmm-shimmer {
+    0%,20% { transform:translateX(-120%); }
+    62%,100% { transform:translateX(120%); }
+}
+@keyframes mmm-edge-glow {
+    0%,100% { border-color:#6015b6; box-shadow:0 0 0 #934dff00; }
+    50% { border-color:#9750e7; box-shadow:0 0 14px #8735df55; }
+}
+@keyframes mmm-hammer-strike {
+    0%,12%,100% { transform:rotate(0); }
+    32%,43% { transform:rotate(38deg); }
+    53% { transform:rotate(-48deg); }
+    61% { transform:rotate(-30deg); }
+    69%,78% { transform:rotate(-48deg); }
+    92% { transform:rotate(0); }
+}
+@keyframes mmm-impact-ring {
+    0%,51% { opacity:0; transform:scale(.4); }
+    54% { opacity:.9; transform:scale(.6); }
+    77%,100% { opacity:0; transform:scale(1.65); }
+}
+@keyframes mmm-impact-sparks {
+    0%,51% { opacity:0; }
+    54%,58% { opacity:1; }
+    72%,100% { opacity:0; }
+}
+
+/* Introduction details adapt to the selected sheet columns. */
+#mmm-overlay .mmm-info { height:auto; }
+#mmm-overlay .mmm-facts { height:auto; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px 18px; padding:16px 18px; }
+#mmm-overlay .mmm-facts[data-count="1"] { grid-template-columns:minmax(0,1fr); }
+#mmm-overlay .mmm-facts[data-count="2"] { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#mmm-overlay .mmm-facts > div { min-width:0; }
+#mmm-overlay .mmm-facts .mmm-label { font-size:25px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#mmm-overlay .mmm-facts .mmm-value { font-size:30px; }
+
+/* Fit width at the image's intrinsic ratio; clip only vertical overflow. */
+#bid-player-photo, #mmm-photo {
+    position:absolute; left:0; top:0; bottom:auto;
+    width:100%; height:auto; max-width:none; max-height:none;
+    object-fit:initial; transform:none;
+}
+#bid-player-photo[data-vertical-align="center"], #mmm-photo[data-vertical-align="center"] { top:50%; transform:translateY(-50%); }
+#bid-player-photo[data-vertical-align="bottom"], #mmm-photo[data-vertical-align="bottom"] { top:100%; transform:translateY(-100%); }
+@media (prefers-reduced-motion:no-preference) {
+    #bid-player-photo, #mmm-photo { transition:top 350ms ease, transform 350ms ease; }
+}
+#controller-app .photo-alignment-controls p { color:#64748b; font-size:13px; line-height:1.5; }
+#controller-app .photo-alignment-controls button { background:#f8fafc; border:1px solid #cbd5e1; color:#475569; }
+#controller-app .photo-alignment-controls button[aria-pressed="true"] { background:#ede9fe; border-color:#8b5cf6; color:#5b21b6; }
+#controller-app .photo-alignment-controls button:focus-visible { outline:3px solid #a78bfa; outline-offset:2px; }
+.mmm-portrait:has(#mmm-photo:not([hidden])) .mmm-initials { visibility:hidden; }

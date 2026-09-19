@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auction System</title>
+<script src="vendor/peerjs.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700;800;900&family=DM+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+/* =============================================
+   CONTROLLER STYLES
+   ============================================= */
+#controller-app {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    padding: 20px;
+    padding-bottom: 100px;
+    min-height: 100vh;
+}
+#controller-app .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 900px; margin: 0 auto 20px auto; }
+#controller-app h2 { font-size: 14px; text-transform: uppercase; color: #444; margin: 0 0 15px 0; border-bottom: 2px solid #007bff; display: inline-block; padding-bottom: 3px; }
+#controller-app label { display: block; font-weight: bold; color: #666; font-size: 12px; margin-top: 15px; }
+#controller-app input, #controller-app select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 14px; margin-top: 5px; }
+#controller-app .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+#controller-app button { flex: 1; padding: 12px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }
+#controller-app button:disabled { opacity: 0.4; cursor: not-allowed; }
+#controller-app button:hover:not(:disabled) { filter: brightness(1.1); }
+#controller-app .btn-connect { background: #007bff; color: white; }
+#controller-app .btn-sold { background: #28a745; color: white; font-size: 16px; }
+#controller-app .btn-undo { background: #6c757d; color: white; }
+#controller-app .btn-redo { background: #17a2b8; color: white; }
+#controller-app .setup-header-grid { display: grid; grid-template-columns: 60px 2fr 1fr 1fr; gap: 10px; font-weight: bold; font-size: 11px; color: #888; margin-bottom: 5px; }
+#controller-app .team-input-row { display: grid; grid-template-columns: 60px 2fr 1fr 1fr; gap: 10px; margin-bottom: 8px; align-items: center; }
+#controller-app .remaining-purse { font-weight: bold; color: #28a745; background: #e9f7ef; padding: 8px; border-radius: 4px; text-align: center; }
+#controller-app .logo-upload { border: 1px dashed #ccc; width: 50px; height: 50px; border-radius: 8px; cursor: pointer; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; color: #999; }
+#controller-app .logo-upload img { width: 100%; height: 100%; object-fit: contain; position: absolute; top:0; left:0; background:white; }
+#controller-app .logo-upload input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+#controller-app .dash-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+#controller-app .dash-table th { text-align: left; background: #f8f9fa; padding: 10px; border-bottom: 2px solid #dee2e6; }
+#controller-app .dash-table td { padding: 10px; border-bottom: 1px solid #eee; }
+#controller-app .remove-btn { color: #dc3545; cursor: pointer; font-weight: bold; border: 1px solid #dc3545; padding: 2px 6px; border-radius: 4px; background: transparent; font-size: 11px; }
+#controller-app .remove-btn:hover { background: #dc3545; color: white; filter: none; }
+#controller-app .seq-badge { background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+#controller-app .toggle-wrap { display: flex; gap: 20px; font-size: 13px; font-weight: bold; color: #555; }
+#controller-app .toggle-wrap label { margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+#controller-app .toggle-wrap input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; transform: scale(1.2); }
+#controller-app .players-card { max-width: 1200px; padding: 0; overflow: hidden; }
+#controller-app .controller-tabs {
+    max-width: 1200px;
+    margin: 0 auto 18px auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+}
+#controller-app .controller-tab-btn {
+    padding: 14px 12px;
+    border-radius: 14px;
+    border: 1px solid #dbe2ea;
+    background: #fff;
+    color: #475569;
+    font-weight: 800;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+#controller-app .controller-tab-btn.active {
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    color: #fff;
+    border-color: #1d4ed8;
+}
+#controller-app .tab-panel[hidden] { display: none !important; }
+.players-hero { padding: 24px; color: white; background: linear-gradient(135deg, #0f172a, #1e3a8a); }
+.players-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.players-hero h1 { font-size: 25px; margin: 0 0 6px; }
+.players-hero p { color: #bfdbfe; font-size: 13px; margin: 0; }
+.player-count { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 8px 14px; font-size: 13px; white-space: nowrap; }
+.player-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 180px 180px 180px auto; gap: 10px; padding: 18px 24px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+#controller-app .player-toolbar input, #controller-app .player-toolbar select { margin: 0; }
+#controller-app .refresh-players { flex: none; padding: 10px 16px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; }
+#controller-app .sheet-source-input { min-width: 0; }
+#controller-app .template-download { flex: none; padding: 10px 16px; color: #7c2d12; background: #fff7ed; border: 1px solid #fdba74; }
+#controller-app .searchable-select { width: 100%; }
+.players-status { padding: 40px 24px; color: #64748b; text-align: center; }
+.players-error { color: #b91c1c; background: #fef2f2; }
+.players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; padding: 20px 24px 26px; background: #f8fafc; max-height: 650px; overflow-y: auto; }
+.player-card { display: grid; grid-template-columns: auto 66px minmax(0, 1fr) auto; gap: 16px; align-items: center; min-width: 0; padding: 16px 18px; background: linear-gradient(180deg, #fff 0%, #fbfdff 100%); border: 1px solid #e2e8f0; border-radius: 16px; cursor: pointer; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; box-shadow: 0 6px 18px rgba(15,23,42,.04); }
+.player-card:hover { transform: translateY(-2px); border-color: #93c5fd; box-shadow: 0 12px 26px rgba(15,23,42,.10); }
+.player-card.sold { opacity: .62; border-color: #fca5a5; cursor: not-allowed; }
+.player-card.unsold { border-color: #f59e0b; }
+.player-avatar { width: 66px; height: 66px; border-radius: 16px; object-fit: cover; background: #dbeafe; color: #1d4ed8; border: 1px solid #dbeafe; box-shadow: inset 0 1px 0 rgba(255,255,255,.7); }
+.player-fallback { display: grid; place-items: center; font-size: 20px; font-weight: 800; }
+.player-info { min-width: 0; }
+.player-name { color: #0f172a; font-weight: 800; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-meta { color: #64748b; font-size: 12px; margin-top: 4px; line-height: 1.45; }
+.player-role { display: inline-block; margin-top: 8px; padding: 3px 7px; border-radius: 999px; color: #1d4ed8; background: #eff6ff; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.player-use { margin-top: 8px; color: #2563eb; font-size: 11px; font-weight: 700; }
+.player-topline { display: flex; justify-content: flex-start; align-items: center; gap: 8px; flex-wrap: wrap; grid-column: 1 / -1; }
+.player-serial-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; background: #e2e8f0; color: #334155; font-size: 10px; font-weight: 800; letter-spacing: .4px; }
+.player-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+.player-status-available { background: #dcfce7; color: #166534; }
+.player-status-unsold { background: #fef3c7; color: #92400e; }
+.player-status-sold { background: #fee2e2; color: #991b1b; }
+#controller-app .poster-download { width: 100%; margin-top: 10px; padding: 8px 10px; color: #fff; background: #b91c1c; border-radius: 7px; font-size: 11px; }
+#controller-app .poster-download.busy { opacity: .65; cursor: wait; }
+@media (max-width: 760px) {
+    #controller-app { padding: 10px; }
+    .player-toolbar { grid-template-columns: 1fr 1fr; padding: 14px; }
+    .player-toolbar input { grid-column: 1 / -1; }
+    .player-toolbar .sheet-source-input { grid-column: 1 / -1; }
+    .player-toolbar .template-download { grid-column: 1 / -1; }
+    .players-grid { grid-template-columns: 1fr; padding: 14px; }
+    .player-card { grid-template-columns: 58px minmax(0, 1fr); gap: 12px; padding: 14px; }
+    .player-topline { grid-column: 1 / -1; }
+    .player-avatar { width: 58px; height: 58px; border-radius: 14px; }
+    .player-name { font-size: 15px; }
+    .player-use { margin-top: 6px; }
+    .poster-download { grid-column: 1 / -1; }
+}
+.overlay-url-box {
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+    color: #333;
+    border: 1px solid #dee2e6;
+    min-height: 36px;
+}
+.copy-feedback {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 12px;
+    color: #28a745;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.copy-feedback.show { opacity: 1; }
+
+/* =============================================
+   DISPLAY / OVERLAY STYLES
+   ============================================= */
+:root {
+    --gold: #F0A500;
+    --gold-light: #FFD166;
+    --gold-dim: rgba(240,165,0,0.15);
+    --blue: #1A6EFF;
+    --blue-dim: rgba(26,110,255,0.12);
+    --green: #00C98D;
+    --red: #FF4D4D;
+    --surface: rgba(8, 10, 18, 0.92);
+    --surface-card: rgba(15, 18, 32, 0.97);
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.13);
+    --text-primary: #F0F2FF;
+    --text-secondary: #8892B0;
+    --text-dim: rgba(136,146,176,0.6);
+}
+
+#display-app {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ── CONNECTING SCREEN ── */
+#connecting-layer {
+    position: absolute; top: 0; left: 0;
+    width: 1920px; height: 1080px;
+    background: #080A12;
+    z-index: 1000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px;
+}
+#connecting-layer::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(ellipse 900px 500px at 50% 50%, rgba(26,110,255,0.08) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px),
+        repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px);
+}
+#connecting-layer h1 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 4px; text-transform: uppercase;
+    position: relative;
+}
+#connecting-status {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 60px; line-height: 1;
+    color: var(--gold);
+    letter-spacing: 8px;
+    text-shadow: 0 0 80px rgba(240,165,0,0.4), 0 0 20px rgba(240,165,0,0.2);
+    position: relative;
+}
+#connecting-layer p {
+    font-size: 14px; color: var(--text-dim);
+    letter-spacing: 1px;
+    position: relative;
+}
+
+/* ── MAIN CANVAS ── */
+.overlay-canvas {
+    position: relative;
+    width: 1920px; height: 1080px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 50px 60px;
+    font-family: 'DM Sans', sans-serif;
+}
+
+/* ══════════════════════════════════════════
+   BIDDING PANEL (bottom-left)
+══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   LEFT PANEL (showcase + bidding stacked)
+══════════════════════════════════════════ */
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.55s cubic-bezier(0.16,1,0.3,1), opacity 0.55s ease;
+    transform: translateY(0);
+    opacity: 0;
+}
+
+/* ══════════════════════════════════════════
+   PLAYER SHOWCASE CARD
+══════════════════════════════════════════ */
+.player-showcase {
+    width: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0d1a3e 0%, #071020 100%);
+    border: 1px solid rgba(255,255,255,0.13);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.82), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.showcase-sl-row {
+    padding: 13px 18px 11px;
+    background: rgba(0,0,0,0.38);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.showcase-sl-badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+}
+.showcase-photo-area {
+    width: 400px;
+    height: 480px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, rgba(26,110,255,0.14) 0%, rgba(240,165,0,0.09) 100%);
+}
+.showcase-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: none;
+}
+.showcase-initials {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 140px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.20);
+}
+.showcase-info {
+    padding: 18px 20px 22px;
+    text-align: center;
+    background: linear-gradient(0deg, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.18) 100%);
+}
+.showcase-name {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.showcase-role {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.60);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+}
+
+.bidding-container {
+    background: var(--surface-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 22px 28px;
+    box-shadow:
+        0 30px 80px rgba(0,0,0,0.7),
+        0 0 0 1px rgba(255,255,255,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    width: 400px;
+    min-height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+.bidding-container::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(240,165,0,0.4) 30%, rgba(26,110,255,0.4) 70%, transparent 100%);
+}
+
+#bidding-active {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+.bid-player-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 310px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.bid-player-photo-wrap {
+    width: 74px;
+    height: 74px;
+    border-radius: 18px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(26,110,255,0.20), rgba(240,165,0,0.18));
+    border: 2px solid rgba(240,165,0,0.28);
+    display: grid;
+    place-items: center;
+}
+.bid-player-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+.bid-player-fallback {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--text-primary);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+.bid-player-meta {
+    min-width: 0;
+}
+.bid-player-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.15;
+    margin-bottom: 4px;
+}
+.bid-player-role {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-secondary);
+}
+.bid-card {
+    flex: 1;
+    padding: 10px 14px;
+    text-align: center;
+    position: relative;
+}
+.bid-card:not(:last-child) {
+    border-right: 1px solid var(--border);
+}
+.bid-card.current::after {
+    content: 'LIVE';
+    position: absolute; top: 8px; right: 12px;
+    font-size: 9px; font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--blue);
+    background: var(--blue-dim);
+    border: 1px solid rgba(26,110,255,0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+.d-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin-bottom: 10px;
+}
+.d-label.blue { color: var(--blue); }
+.d-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: 1px;
+}
+.bid-card.current .d-value {
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(240,165,0,0.35);
+}
+
+#bidding-sold,
+#bidding-unsold {
+    display: none;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    padding: 20px 28px 22px;
+}
+#bidding-sold::after,
+#bidding-unsold::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    animation: shimmerSweep 1.2s ease 0.1s forwards;
+    pointer-events: none;
+}
+@keyframes shimmerSweep {
+    0%   { left: -60%; }
+    100% { left: 130%; }
+}
+#bidding-sold {
+    background: linear-gradient(135deg, rgba(0,201,141,0.10) 0%, rgba(0,201,141,0.03) 60%, transparent 100%);
+    border: 1px solid rgba(0,201,141,0.25);
+    box-shadow: 0 0 40px rgba(0,201,141,0.12), inset 0 1px 0 rgba(0,201,141,0.15);
+    animation: soldReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes soldReveal {
+    0%   { transform: scaleX(0.6) translateY(10px); opacity: 0; }
+    60%  { transform: scaleX(1.02) translateY(-2px); opacity: 1; }
+    100% { transform: scaleX(1) translateY(0); opacity: 1; }
+}
+.sold-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    animation: fadeSlideUp 0.4s ease 0.15s both;
+}
+.sold-word {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 8px;
+    color: var(--green);
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(0,201,141,0.5), 0 0 60px rgba(0,201,141,0.2);
+    animation: soldPulse 0.6s ease 0.3s both;
+}
+@keyframes soldPulse {
+    0%   { letter-spacing: 2px; opacity: 0; }
+    60%  { letter-spacing: 10px; }
+    100% { letter-spacing: 8px; opacity: 1; }
+}
+.sold-divider {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0,201,141,0.4), transparent);
+}
+#res-team {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 50px;
+    color: var(--text-primary);
+    letter-spacing: 3px;
+    line-height: 1;
+    animation: fadeSlideUp 0.4s ease 0.25s both;
+}
+.sold-meta {
+    font-size: 17px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-top: 6px;
+    animation: fadeSlideUp 0.4s ease 0.35s both;
+}
+#res-price {
+    color: var(--gold);
+    font-weight: 800;
+    font-size: 19px;
+    text-shadow: 0 0 20px rgba(240,165,0,0.3);
+}
+#sold-particles {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+}
+#bidding-unsold {
+    background: linear-gradient(135deg, rgba(255,77,77,0.09) 0%, rgba(255,77,77,0.03) 60%, transparent 100%);
+    border: 1px solid rgba(255,77,77,0.22);
+    box-shadow: 0 0 40px rgba(255,77,77,0.10), inset 0 1px 0 rgba(255,77,77,0.12);
+    animation: unsoldReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes unsoldReveal {
+    0%   { transform: translateX(-20px) scale(0.95); opacity: 0; }
+    70%  { transform: translateX(4px) scale(1.01); opacity: 1; }
+    100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+.unsold-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    animation: fadeSlideUp 0.4s ease 0.15s both;
+}
+.unsold-word {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 8px;
+    color: var(--red);
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(255,77,77,0.5), 0 0 60px rgba(255,77,77,0.2);
+    animation: unsoldShake 0.5s ease 0.3s both;
+}
+@keyframes unsoldShake {
+    0%   { transform: translateX(0); opacity: 0; }
+    20%  { transform: translateX(-6px); opacity: 1; }
+    40%  { transform: translateX(5px); }
+    60%  { transform: translateX(-3px); }
+    80%  { transform: translateX(2px); }
+    100% { transform: translateX(0); opacity: 1; }
+}
+.unsold-divider {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,77,77,0.4), transparent);
+}
+#unsold-player {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 50px;
+    color: var(--text-primary);
+    letter-spacing: 3px;
+    line-height: 1;
+    animation: fadeSlideUp 0.4s ease 0.25s both;
+    opacity: 0.7;
+}
+.unsold-sub {
+    font-size: 13px;
+    color: var(--red);
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 5px;
+    opacity: 0.7;
+    animation: fadeSlideUp 0.4s ease 0.35s both;
+}
+@keyframes fadeSlideUp {
+    0%   { transform: translateY(8px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ══════════════════════════════════════════
+   BALANCE SHEET (top-right)
+══════════════════════════════════════════ */
+.balance-sheet {
+    width: 680px;
+    max-height: 980px;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-card);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow:
+        0 30px 80px rgba(0,0,0,0.7),
+        0 0 0 1px rgba(255,255,255,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    align-self: flex-start;
+    margin-top: 20px;
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateX(720px);
+    opacity: 0;
+    border: 1px solid var(--border-strong);
+    position: relative;
+}
+.balance-sheet::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(240,165,0,0.5) 40%, rgba(26,110,255,0.5) 70%, transparent 100%);
+    z-index: 1;
+}
+.sheet-visible { transform: translateX(0) !important; opacity: 1 !important; }
+
+.balance-scroll-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+}
+.balance-scroll-inner {
+    padding: 48px 0;
+}
+@keyframes balanceAutoScroll {
+    0%, 12% { transform: translateY(0); }
+    88%, 100% { transform: translateY(var(--scroll-dist, 0px)); }
+}
+
+.sheet-header {
+    padding: 26px 32px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(240,165,0,0.04);
+}
+.sheet-header-icon {
+    width: 40px; height: 40px;
+    background: var(--gold-dim);
+    border: 1px solid rgba(240,165,0,0.25);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+}
+.sheet-header-icon svg { width: 20px; height: 20px; }
+.sheet-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.balance-sheet table { width: 100%; border-collapse: collapse; }
+.balance-sheet thead tr { background: rgba(255,255,255,0.02); }
+.balance-sheet th {
+    text-align: left;
+    padding: 12px 24px 12px 28px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: 'DM Sans', sans-serif;
+}
+.balance-sheet th:last-child { display: none; }
+.balance-sheet tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+}
+.balance-sheet tbody tr:last-child { border-bottom: none; }
+.balance-sheet td { padding: 16px 28px; vertical-align: top; }
+.team-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.team-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.team-logo-wrap {
+    width: 52px; height: 52px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-strong);
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.team-logo {
+    width: 44px; height: 44px;
+    object-fit: contain;
+}
+.team-info b {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    font-weight: 400;
+    color: var(--text-primary);
+    display: block;
+    line-height: 1;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+}
+.player-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+}
+.player-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.13);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+    line-height: 1.5;
+    letter-spacing: 0.3px;
+}
+.purse-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--green);
+    white-space: nowrap;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+}
+
+/* Base body reset */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { margin: 0; padding: 0; }
+
+/* ══════════════════════════════════════════
+   OVERVIEW APP  (mobile-responsive)
+══════════════════════════════════════════ */
+#overview-app {
+    min-height: 100vh;
+    background: #0a0b12;
+    color: #e8ecf1;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+.ov-header {
+    background: #0e1020;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 16px 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.ov-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+.ov-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2.5px;
+    color: #f0a500;
+    line-height: 1;
+}
+.ov-subtitle {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+.ov-conn-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+    transition: background 0.3s, box-shadow 0.3s;
+}
+.ov-conn-dot.connected {
+    background: #22c55e;
+    box-shadow: 0 0 7px rgba(34,197,94,0.7);
+}
+.ov-tabs {
+    display: flex;
+    gap: 4px;
+}
+.ov-tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.38);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 11px 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.18s, border-color 0.18s;
+}
+.ov-tab-btn.active {
+    color: #f0a500;
+    border-bottom-color: #f0a500;
+}
+.ov-body {
+    padding: 16px;
+    max-width: 640px;
+    margin: 0 auto;
+}
+.ov-pane { display: none; }
+.ov-pane.active { display: block; }
+
+/* Stats row */
+.ov-stats {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.ov-stat {
+    flex: 1;
+    background: #111420;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+}
+.ov-stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: 3px;
+}
+.ov-stat-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.ov-stat-sold .ov-stat-num   { color: #22c55e; }
+.ov-stat-unsold .ov-stat-num { color: #ef4444; }
+.ov-stat-avail .ov-stat-num  { color: rgba(255,255,255,0.45); }
+
+/* Search + filters */
+.ov-search {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #e8ecf1;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 10px;
+}
+.ov-search::placeholder { color: rgba(255,255,255,0.22); }
+.ov-search:focus { border-color: rgba(240,165,0,0.35); }
+.ov-filters {
+    display: flex;
+    gap: 7px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.ov-chip {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    color: rgba(255,255,255,0.5);
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+}
+.ov-chip.active {
+    background: rgba(240,165,0,0.14);
+    border-color: rgba(240,165,0,0.38);
+    color: #f0a500;
+}
+
+/* Player list */
+.ov-player-list { display: flex; flex-direction: column; gap: 7px; }
+.ov-player-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #111420;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px 12px 10px 10px;
+}
+.ov-player-photo {
+    width: 52px; height: 52px;
+    border-radius: 9px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.04);
+}
+.ov-player-fallback {
+    width: 52px; height: 52px;
+    border-radius: 9px;
+    background: rgba(26,110,255,0.13);
+    border: 1px solid rgba(26,110,255,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: rgba(26,110,255,0.6);
+    flex-shrink: 0;
+}
+.ov-player-info { flex: 1; min-width: 0; }
+.ov-player-name {
+    font-weight: 800;
+    font-size: 14px;
+    color: #e8ecf1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+.ov-player-role {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+.ov-player-team {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ov-player-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    flex-shrink: 0;
+}
+.ov-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+}
+.ov-badge-sold      { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.28); color: #22c55e; }
+.ov-badge-unsold    { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.28); color: #ef4444; }
+.ov-badge-available { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); }
+.ov-sold-price {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #f0a500;
+    white-space: nowrap;
+}
+
+/* Team cards */
+.ov-team-list { display: flex; flex-direction: column; gap: 12px; }
+.ov-team-card {
+    background: #111420;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.ov-team-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.ov-team-logo-wrap {
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.ov-team-logo { width: 40px; height: 40px; object-fit: contain; }
+.ov-team-logo-initial {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: rgba(240,165,0,0.55);
+}
+.ov-team-info { flex: 1; min-width: 0; }
+.ov-team-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1.5px;
+    color: #e8ecf1;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ov-team-meta {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 3px;
+}
+.ov-team-purse {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: #22c55e;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right;
+}
+.ov-team-purse-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+}
+.ov-team-players { padding: 8px 16px 12px; }
+.ov-team-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    gap: 8px;
+}
+.ov-team-player-row:last-child { border-bottom: none; }
+.ov-team-player-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #d4d8e2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+.ov-team-player-role {
+    font-size: 10px;
+    color: rgba(255,255,255,0.28);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    margin-left: 4px;
+}
+.ov-team-player-price {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: #f0a500;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.ov-no-players {
+    padding: 10px 0;
+    font-size: 12px;
+    color: rgba(255,255,255,0.22);
+    text-align: center;
+}
+.ov-empty {
+    text-align: center;
+    color: rgba(255,255,255,0.22);
+    font-size: 13px;
+    padding: 40px 0;
+}
+.ov-connecting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 45vh;
+    gap: 14px;
+    color: rgba(255,255,255,0.35);
+    font-size: 13px;
+}
+.ov-spinner {
+    width: 30px; height: 30px;
+    border: 3px solid rgba(255,255,255,0.08);
+    border-top-color: #f0a500;
+    border-radius: 50%;
+    animation: ovSpin 0.75s linear infinite;
+}
+@keyframes ovSpin { to { transform: rotate(360deg); } }
+.ov-url-box {
+    background: #111420;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    word-break: break-all;
+    margin: 8px 0;
+}
+.ov-live-banner {
+    display: none;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 20px 13px;
+    border-top: 1px solid rgba(239,68,68,0.18);
+    background: rgba(239,68,68,0.05);
+    margin-top: 2px;
+}
+.ov-live-banner { flex-wrap: wrap; }
+.ov-live-photo { width: 72px; height: 90px; object-fit: cover; border-radius: 10px; flex-shrink: 0; }
+.ov-live-info { flex: 1; min-width: 150px; }
+.ov-live-info .ov-live-player-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
+.ov-live-facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 10px 0 0; }
+.ov-live-facts > div { min-width: 0; overflow-wrap: anywhere; }
+.ov-live-facts dt { font-size: 11px; color: #aab3c0; }
+.ov-live-facts dd { margin: 2px 0 0; font-size: 14px; color: #e8ecf1; }
+.ov-live-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: #ef4444;
+    flex-shrink: 0;
+    animation: ovLivePulse 1.3s ease-in-out infinite;
+}
+@keyframes ovLivePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+    50% { box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+}
+.ov-live-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #ef4444;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+.ov-live-player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1.5px;
+    color: #e8ecf1;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ov-live-amounts {
+    margin-left: auto;
+    flex-shrink: 0;
+    text-align: right;
+}
+.ov-live-bid-amount {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: #f0a500;
+    line-height: 1;
+    letter-spacing: 1px;
+}
+.ov-live-bid-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+#controller-app .directory-unsold-switch { display: flex; align-items: center; gap: 9px; position: relative; width: fit-content; margin: 10px 0; cursor: pointer; }
+#controller-app .directory-unsold-switch input { position: absolute; opacity: 0; width: 40px; height: 24px; margin: 0; }
+.directory-switch-track { width: 40px; height: 24px; background: #64748b; border-radius: 12px; flex-shrink: 0; }
+.directory-switch-track::before { content: ''; display: block; width: 18px; height: 18px; margin: 3px; border-radius: 50%; background: white; transition: transform .15s; }
+.directory-unsold-switch input:checked + .directory-switch-track { background: #15803d; }
+.directory-unsold-switch input:checked + .directory-switch-track::before { transform: translateX(16px); }
+.directory-unsold-switch input:focus-visible + .directory-switch-track { outline: 2px solid #2563eb; outline-offset: 3px; }
+.pricing-range-row { display:flex; flex-wrap:wrap; align-items:end; gap:10px; margin-bottom:10px; }
+.pricing-range-row label { flex:1; min-width:100px; }
+</style>
+<link rel="stylesheet" href="themes/mmm.css">
+<link rel="stylesheet" href="themes/tournaments.css">
+<link rel="stylesheet" href="themes/controller-responsive.css">
+<link rel="stylesheet" href="themes/auth.css">
+</head>
+<body>
+<section id="auth-screen">
+    <div class="auth-card"><div class="auth-brand">Auction manager</div><h1 id="auth-title">Welcome back</h1><p class="auth-subtitle">Your tournaments, teams, and auction results in one private workspace.</p>
+    <form onsubmit="Account.submit(event)">
+        <div id="auth-name-row" hidden><label for="auth-name">Full name</label><input id="auth-name" autocomplete="name" maxlength="100"></div>
+        <div id="auth-email-row"><label for="auth-email">Email address</label><input id="auth-email" type="email" autocomplete="email" required></div>
+        <div id="auth-password-row"><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required></div>
+        <div id="auth-confirm-row" hidden><label for="auth-confirm">Confirm password</label><input id="auth-confirm" type="password" autocomplete="new-password"></div>
+        <button id="auth-submit" type="submit">Log in</button>
+    </form>
+    <p id="auth-message" role="status" aria-live="polite"></p><button id="auth-resend" type="button" onclick="Account.resend()" hidden>Resend confirmation email</button>
+    <nav class="auth-links" aria-label="Account options"><button type="button" onclick="Account.setMode('login')">Log in</button><button type="button" onclick="Account.setMode('signup')">Create account</button><button type="button" onclick="Account.setMode('forgot')">Forgot password?</button></nav>
+    </div>
+</section>
+<div id="account-bar" hidden><span id="account-email"></span><span id="cloud-status" role="status" aria-live="polite"></span><button id="cloud-retry" onclick="Account.retry()" hidden>Retry save</button><button id="cloud-reload" onclick="Account.reloadCloud()" hidden>Load cloud version</button><button onclick="Account.download()">Download backup</button><button onclick="Account.importLocal()">Import local tournaments</button><button onclick="Account.signOut()">Sign out</button></div>
+
+<!-- =============================================
+     CONTROLLER APP
+     ============================================= -->
+<main id="tournament-home" style="display:none">
+    <div class="tournament-kicker">Auction manager</div>
+    <div class="tournament-home-heading"><div><h1>Your tournaments</h1><p>Set up a tournament, build your teams, and run the auction.</p></div><button class="tournament-primary" onclick="showAddTournament()">+ Add tournament</button></div>
+    <p id="tournament-home-status" role="status"></p><div id="tournament-count"></div>
+    <div id="tournament-list"></div>
+    <div id="tournament-empty" hidden><span class="tournament-icon">🏆</span><h2>Your next auction starts here</h2><p>Create your first tournament to get started.</p><button class="tournament-primary" onclick="showAddTournament()">+ Add tournament</button></div>
+</main>
+<dialog id="add-tournament-dialog"><form onsubmit="submitTournament(event)"><h2>Add tournament</h2><label for="new-tournament-name">Tournament name</label><input id="new-tournament-name" required maxlength="100" autocomplete="off" placeholder="e.g. Village Premier League 2026"><p id="tournament-form-error" role="alert"></p><div class="tournament-dialog-actions"><button type="button" class="tournament-cancel" onclick="document.getElementById('add-tournament-dialog').close()">Cancel</button><button class="tournament-primary" type="submit">Create tournament</button></div></form></dialog>
+<div id="controller-app" style="display:none">
+    <header class="tournament-header"><a id="all-tournaments-link" href="./">← All tournaments</a><h1 id="active-tournament-name"></h1></header>
+
+    <div class="controller-tabs" role="tablist" aria-label="Auction sections">
+        <button class="controller-tab-btn active" type="button" data-tab="players" onclick="switchControllerTab('players')">1. Player Directory</button>
+        <button class="controller-tab-btn" type="button" data-tab="setup" onclick="switchControllerTab('setup')">2. Tournament Setup</button>
+        <button class="controller-tab-btn" type="button" data-tab="auction" onclick="switchControllerTab('auction')">3. Auction</button>
+        <button class="controller-tab-btn" type="button" data-tab="dashboard" onclick="switchControllerTab('dashboard')">4. Team Dashboard</button>
+        <button class="controller-tab-btn" type="button" data-tab="controls" onclick="switchControllerTab('controls')">Link &amp; control</button>
+    </div>
+
+    <section class="tab-panel" data-tab-panel="players">
+    <section class="card players-card">
+        <div class="players-hero">
+            <div class="players-hero-top">
+                <div>
+                    <h1>Player Directory</h1>
+                    <p>Live registrations from Google Sheets · click a player to add them to the auction form</p>
+                </div>
+                <div class="player-count" id="player-count">Loading…</div>
+            </div>
+        </div>
+        <div class="player-toolbar">
+            <input id="player-sheet-url" aria-label="Google Sheet link" class="sheet-source-input" type="url" placeholder="Paste Google Sheet link here…" oninput="setPlayerSheetUrl(this.value)">
+            <input id="player-search" aria-label="Search registered players" type="search" placeholder="Search by name, village or phone…" oninput="renderSheetPlayers()">
+            <select id="player-role-filter" aria-label="Filter players by role" onchange="renderSheetPlayers()"><option value="">All roles</option></select>
+            <select id="player-village-filter" aria-label="Filter players by village" onchange="renderSheetPlayers()"><option value="">All villages</option></select>
+            <button class="refresh-players" type="button" onclick="loadSheetPlayers()">↻ Refresh</button>
+            <button class="template-download" type="button" onclick="downloadSheetTemplate()">⬇ Template</button>
+            <span style="font-size:12px;color:#64748b">Age/DOB: enter an age or DOB (YYYY-MM-DD or DD/MM/YYYY). Age = current year − birth year.</span>
+        </div>
+        <div id="players-list" class="players-status">Loading player registrations…</div>
+    </section>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="setup" hidden>
+    <div class="card">
+        <h2>1. Tournament Setup</h2>
+        <div style="margin-bottom: 15px;">
+            <label for="teamCount">Number of Teams</label>
+            <input type="number" id="teamCount" value="4" min="1" max="16" onchange="initTeams()">
+        </div>
+        <div class="setup-header-grid">
+            <div>LOGO</div>
+            <div>TEAM NAME</div>
+            <div>MAX PURSE (₹)</div>
+            <div>REMAINING (₹)</div>
+        </div>
+        <div id="team-config-area"></div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+            <label for="basePriceMode">Base price option</label>
+            <select id="basePriceMode" onchange="updatePricingMode(this.value)"><option value="global">Global</option><option value="category">Based on category</option></select>
+            <label for="basePriceInput">Global Base Price (₹)</label>
+            <input type="number" id="basePriceInput" value="0" onchange="updateBasePrice(this.value)">
+            <div id="category-base-prices"></div>
+            <h3>Step increment ranges</h3>
+            <p>From is inclusive; To is exclusive. Leave To blank for no upper limit. Outside these ranges, the default increment applies.</p>
+            <div id="bid-increment-ranges"></div>
+            <button type="button" onclick="addBidRange()">+ Add range</button>
+
+        </div>
+        <div class="btn-group">
+            <button class="btn-connect" style="background:#6f42c1;" onclick="applyAndSync()">APPLY & SYNC</button>
+            <button style="background:#198754; color:white;" onclick="exportCSV()">DOWNLOAD CSV</button>
+            <button style="background:#dc3545; color:white;" onclick="factoryReset()">RESET THIS AUCTION</button>
+        </div>
+    </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="auction" hidden>
+    <div class="card">
+        <h2>2. Bidding Counter</h2>
+        <div class="btn-group" style="margin-bottom:15px">
+            <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>UNDO</button>
+            <button class="btn-redo" id="redoBtn" onclick="redo()" disabled>REDO</button>
+        </div>
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 10px; margin-bottom: 10px;">
+            <div style="font-size: 11px; color: #888;">CURRENT BID</div>
+            <div style="font-size: 32px; font-weight: bold; color: #007bff;" id="curBidLabel">₹ 0</div>
+        </div>
+        <div class="team-input-row" style="grid-template-columns: 1fr 1fr;">
+            <div>
+                <label for="manualBidEdit">Manual Bid (₹)</label>
+                <input type="number" id="manualBidEdit" value="0" oninput="manualBidChange(this.value)">
+            </div>
+            <div>
+                <label for="customStepInput">Default Step Increment (₹)</label>
+                <input type="number" id="customStepInput" value="50000" onchange="updateBidIncrement(this.value)">
+            </div>
+        </div>
+        <p id="active-pricing-summary"></p>
+        <div class="btn-group">
+            <button style="background:#dc3545; color:white;" aria-label="Decrease current bid" onclick="changeBid(-1)">−</button>
+            <button style="background:#28a745; color:white;" aria-label="Increase current bid" onclick="changeBid(1)">+</button>
+        </div>
+    </div>
+
+    <div class="card" style="border-left: 5px solid #28a745;">
+        <h2>3. Sale Decision</h2>
+        <div style="margin-bottom: 15px;">
+            <label for="playerDirectorySelect">Select Player from Directory (search SL or name)</label>
+            <label class="directory-unsold-switch" for="showUnsoldDirectoryPlayers">
+                <input id="showUnsoldDirectoryPlayers" type="checkbox" role="switch" autocomplete="off" onchange="toggleUnsoldDirectoryPlayers()">
+                <span class="directory-switch-track" aria-hidden="true"></span>
+                <span>Show unsold players</span>
+            </label>
+            <input id="playerDirectorySelect" class="searchable-select" type="text" list="playerDirectoryOptions" placeholder="Type SL or name..." onchange="selectAuctionPlayerFromDirectory(this.value)">
+            <datalist id="playerDirectoryOptions"></datalist>
+        </div>
+        <div class="team-input-row" style="grid-template-columns: 1fr 1fr;">
+            <div>
+                <label for="pNameInput">Player Name</label>
+                <input type="text" id="pNameInput" placeholder="Name" oninput="syncPlayerSelectionToOverlay()">
+            </div>
+            <div>
+                <label for="pTypeInput">Player Type</label>
+                <select id="pTypeInput" onchange="syncPlayerSelectionToOverlay()">
+                    <option>Batsman</option>
+                    <option>Bowler</option>
+                    <option>All-Rounder</option>
+                    <option>Wicket-Keeper</option>
+                </select>
+            </div>
+        </div>
+        <label for="winSelect">Select Winning Team</label>
+        <select id="winSelect">
+            <option value="" selected disabled>-- No Team Selected --</option>
+        </select>
+        <button class="btn-sold" style="margin-top:20px" onclick="handleSold()">MARK AS SOLD</button>
+        <div class="btn-group">
+            <button style="background:#6c757d; color:white;" onclick="handleUnsold()">UNSOLD</button>
+            <button style="background:#343a40; color:white;" onclick="resetPlayer()">CLEAR / NEXT</button>
+        </div>
+    </div>
+    <div class="card photo-alignment-controls">
+        <h2>Overlay image alignment</h2>
+        <p id="photo-alignment-status">Select a player to adjust their overlay photo.</p>
+        <div class="btn-group" role="group" aria-label="Overlay photo vertical alignment">
+            <button type="button" data-photo-align="top" aria-pressed="true" onclick="updatePhotoAlignment('top')">Top aligned</button>
+            <button type="button" data-photo-align="center" aria-pressed="false" onclick="updatePhotoAlignment('center')">Center aligned</button>
+            <button type="button" data-photo-align="bottom" aria-pressed="false" onclick="updatePhotoAlignment('bottom')">Bottom aligned</button>
+        </div>
+        <p class="photo-fit-help">Photo width fits the frame and keeps its original proportions. Change the vertical alignment to position it inside the frame.</p>
+    </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="dashboard" hidden>
+    <div class="card">
+        <h2>4. Team Dashboard & Rosters</h2>
+        <div id="teamDashboards"></div>
+    </div>
+
+    <div class="card" style="border-left: 5px solid #dc3545;">
+        <h2>5. Unsold Players</h2>
+        <div id="unsoldDashboards"></div>
+    </div>
+    </section>
+
+    <section class="tab-panel" data-tab-panel="controls" hidden>
+    <div class="card" style="border-top: 4px solid #007bff;">
+        <div class="link-card-heading" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>🔴 Overlay Link</h2>
+            <div id="ctrl-status" style="font-size:12px; color:#e67e00; font-weight:bold;">Status: Waiting for display to connect</div>
+        </div>
+        <div class="overlay-url-box" id="overlay-url-display">Generating link…</div>
+        <div class="btn-group">
+            <button id="copyLinkBtn" class="btn-connect" onclick="copyOverlayLink()" disabled style="flex:2">
+                📋 COPY OVERLAY LINK
+                <span class="copy-feedback" id="copy-feedback">Copied!</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card" style="border-top: 4px solid #22c55e; margin-top: 0;">
+        <div class="link-card-heading" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>📱 Overview Link <span style="font-size:12px;font-weight:400;color:#6c757d;">(for team owners)</span></h2>
+            <div id="overview-conn-status" style="font-size:12px; color:#6c757d; font-weight:bold;">No viewers connected</div>
+        </div>
+        <div class="ov-url-box" id="overview-url-display">Generating link…</div>
+        <div class="btn-group">
+            <button id="copyOverviewLinkBtn" class="btn-connect" onclick="copyOverviewLink()" disabled style="flex:1; background:#22c55e;">
+                📋 COPY OVERVIEW LINK
+                <span class="copy-feedback" id="copy-overview-feedback">Copied!</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Display Overlay Controls</h2>
+        <label for="overlayTheme">Overlay theme</label>
+        <select id="overlayTheme" onchange="updateSettings()">
+            <option value="classic">Classic</option>
+            <option value="mmm">MMM Purple</option>
+        </select>
+        <p style="font-size:12px;color:#666">MMM Purple: select a player to introduce them. Changing the bid automatically switches to bidding. Select the next player whenever you are ready.</p>
+        <div class="toggle-wrap">
+            <label><input type="checkbox" id="setPurse" onchange="updateSettings()"> Show Team Purse</label>
+            <label><input type="checkbox" id="setNames" onchange="updateSettings()"> Show Player Names</label>
+            <label><input type="checkbox" id="setBidding" onchange="updateSettings()"> Show Bidding UI</label>
+            <label><input type="checkbox" id="setTopPlayers" onchange="updateSettings()"> Show Top 10 Players</label>
+        </div>
+        <fieldset class="intro-field-settings" style="margin-top:18px;border:1px solid #ddd;border-radius:8px;padding:14px">
+            <legend>Initial player overlay information · MMM Purple</legend>
+            <p style="font-size:12px;color:#666;margin-top:0">Choose the sheet columns to show before bidding. Name, photo and role stay in the player header. Refresh the player sheet to discover new columns.</p>
+            <div id="intro-field-controls" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+        </fieldset>
+        <div style="margin-top: 12px;">
+            <div style="font-size: 12px; font-weight: 700; color: #6c757d; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px;">Team details on overlay</div>
+            <div id="overlay-team-toggles" class="overlay-team-toggles"></div>
+        </div>
+    </div>
+
+    </section>
+
+</div><!-- /#controller-app -->
+
+
+<!-- =============================================
+     DISPLAY / OVERLAY APP
+     ============================================= -->
+<div id="display-app" style="display:none">
+
+    <div id="connecting-layer">
+        <h1>Auction 1080p Overlay</h1>
+        <div id="connecting-status">CONNECTING…</div>
+        <p>Keep the controller open. On this computer, use the same browser and address (localhost or 127.0.0.1).</p>
+    </div>
+
+    <div class="overlay-canvas">
+
+        <div class="left-panel" id="left-panel">
+
+            <!-- Player Showcase / Trading Card -->
+            <div class="player-showcase">
+                <div class="showcase-sl-row">
+                    <span class="showcase-sl-badge" id="showcase-sl">SL:- --</span>
+                </div>
+                <div class="showcase-photo-area">
+                    <img class="showcase-photo" id="bid-player-photo" alt="" referrerpolicy="no-referrer">
+                    <div class="showcase-initials" id="bid-player-fallback">?</div>
+                </div>
+                <div class="showcase-info">
+                    <div class="showcase-name" id="bid-player-name">Player</div>
+                    <div class="showcase-role" id="bid-player-role">Role</div>
+                </div>
+            </div>
+
+            <!-- Bidding Panel -->
+            <div class="bidding-container" id="bidding-ui">
+
+                <div id="bidding-active">
+                    <div class="bid-card">
+                        <div class="d-label">Base Price</div>
+                        <div class="d-value" id="baseDisplay">₹ 0</div>
+                    </div>
+                    <div class="bid-card current">
+                        <div class="d-label blue">Current Bid</div>
+                        <div class="d-value" id="bidDisplay">₹ 0</div>
+                    </div>
+                </div>
+
+                <div id="bidding-sold">
+                    <canvas id="sold-particles"></canvas>
+                    <div class="sold-header">
+                        <div class="sold-word">SOLD</div>
+                        <div class="sold-divider"></div>
+                    </div>
+                    <div id="res-team">TEAM NAME</div>
+                    <div class="sold-meta">
+                        <span id="res-player">PLAYER NAME</span>
+                        &nbsp;·&nbsp;
+                        <span id="res-price">₹ 0</span>
+                    </div>
+                </div>
+
+                <div id="bidding-unsold">
+                    <div class="unsold-header">
+                        <div class="unsold-word">UNSOLD</div>
+                        <div class="unsold-divider"></div>
+                    </div>
+                    <div id="unsold-player">PLAYER NAME</div>
+                    <div class="unsold-sub">Not acquired this round</div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="balance-sheet" id="sheet-ui">
+            <div class="sheet-header">
+                <div class="sheet-header-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#F0A500" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="18" rx="3"/>
+                        <path d="M8 9h8M8 13h5"/>
+                    </svg>
+                </div>
+                <div class="sheet-title">Balance Sheet</div>
+            </div>
+            <div class="balance-scroll-wrap" id="balance-scroll-wrap">
+                <div class="balance-scroll-inner" id="balance-scroll-inner">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th colspan="2">Team &amp; Players</th>
+                            </tr>
+                        </thead>
+                        <tbody id="balance-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <section id="mmm-overlay" hidden aria-label="Auction broadcast" data-phase="intro">
+        <div class="mmm-card">
+            <div class="mmm-portrait"><div id="mmm-initials" class="mmm-initials"></div><img id="mmm-photo" alt="Player portrait" referrerpolicy="no-referrer" hidden><div class="mmm-unsold">UNSOLD</div></div>
+            <div class="mmm-info">
+                <div class="mmm-heading"><span id="mmm-name" class="mmm-name"></span><span id="mmm-role" class="mmm-role"></span></div>
+                <div id="mmm-intro-facts" class="mmm-facts"></div>
+            </div>
+            <div id="mmm-bid-ribbon" class="mmm-ribbon" hidden><div class="mmm-wing"><span class="mmm-label">Base price</span><span id="mmm-base" class="mmm-value"></span></div><div class="mmm-wing"><span class="mmm-label">Current bid</span><span id="mmm-bid" class="mmm-value"></span></div></div>
+            <div id="mmm-sale-ribbon" class="mmm-ribbon" hidden><div class="mmm-team"><div id="mmm-logo-left" class="mmm-logo"></div><span id="mmm-team-name" class="mmm-team-name"></span></div><div class="mmm-sale"><div><span class="mmm-label">Sold at</span><span id="mmm-sold-price" class="mmm-value"></span></div><div id="mmm-logo-right" class="mmm-logo mmm-hammer" role="img" aria-label="Auction hammer: sold">
+                <svg viewBox="0 0 76 76" aria-hidden="true" focusable="false">
+                    <ellipse class="mmm-impact-ring" cx="41" cy="60" rx="19" ry="5" fill="none" stroke="#c5ff5c" stroke-width="2"/>
+                    <g class="mmm-hammer-tool">
+                        <path d="M36 28 L57 49" stroke="#eed5ff" stroke-width="7" stroke-linecap="round"/>
+                        <rect x="19" y="17" width="28" height="17" rx="4" transform="rotate(-42 33 25)" fill="#f6efff"/>
+                        <path d="M22 32 L35 20 M30 39 L43 27" stroke="#c49af1" stroke-width="3"/>
+                    </g>
+                    <g class="mmm-impact-sparks" stroke="#c5ff5c" stroke-width="2.5" stroke-linecap="round"><path d="M20 47 L15 42 M39 43 L39 36 M55 48 L61 43"/></g>
+                    <rect x="24" y="56" width="34" height="7" rx="3.5" fill="#e5cbff"/>
+                    <rect x="20" y="64" width="42" height="3" rx="1.5" fill="#9c68d2"/>
+                </svg>
+            </div></div></div>
+            <div class="mmm-caption"><strong id="mmm-caption-name"></strong><span id="mmm-caption-role"></span></div>
+        </div>
+    </section>
+</div><!-- /#display-app -->
+
+<!-- =============================================
+     OVERVIEW APP  (team-owner mobile view)
+     ============================================= -->
+<div id="overview-app" style="display:none">
+    <div class="ov-header">
+        <div class="ov-header-top">
+            <div>
+                <div class="ov-title">Auction Overview</div>
+                <div class="ov-subtitle">Live Team &amp; Player Status</div>
+                <div class="ov-subtitle" id="ov-live-status" role="status"></div>
+            </div>
+            <span class="ov-conn-dot" id="ov-conn-dot"></span>
+        </div>
+        <div class="ov-tabs">
+            <button class="ov-tab-btn active" id="ov-tab-players" onclick="switchOvTab('players')">Players</button>
+            <button class="ov-tab-btn" id="ov-tab-teams" onclick="switchOvTab('teams')">Teams</button>
+        </div>
+        <div class="ov-live-banner" id="ov-live-banner"></div>
+    </div>
+    <div class="ov-body">
+        <div id="ov-players-pane" class="ov-pane active">
+            <div class="ov-connecting" id="ov-connecting">
+                <div class="ov-spinner"></div>
+                <div>Connecting to auction…</div>
+            </div>
+        </div>
+        <div id="ov-teams-pane" class="ov-pane">
+            <div class="ov-connecting">
+                <div class="ov-spinner"></div>
+                <div>Connecting to auction…</div>
+            </div>
+        </div>
+    </div>
+</div><!-- /#overview-app -->
+
+
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="scripts/workspace-store.js"></script>
+<script src="scripts/tournaments.js"></script>
+<script src="scripts/connection.js"></script>
+<script src="scripts/live-overview.js"></script>
+<script src="themes/mmm.js"></script>
+<script src="scripts/auth.js"></script>
+
+</body>
+</html>

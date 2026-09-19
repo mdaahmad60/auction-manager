@@ -1,0 +1,83 @@
+/* Controller-only ergonomics. Broadcast canvases retain their fixed dimensions. */
+#controller-app { font-family:'DM Sans',sans-serif; }
+#controller-app .card { min-width:0; }
+#controller-app input:not([type="checkbox"]):not([type="file"]), #controller-app select { min-height:46px; font-size:16px; min-width:0; }
+#controller-app button { min-height:44px; touch-action:manipulation; line-height:1.35; }
+#controller-app :is(button,a,input,select):focus-visible, #tournament-home :is(button,a):focus-visible { outline:3px solid #8060d9; outline-offset:3px; }
+#controller-app .btn-group { flex-wrap:wrap; }
+#controller-app .btn-group > button { min-width:0; }
+#controller-app .btn-sold { width:100%; min-height:52px; }
+#controller-app .player-toolbar { grid-template-columns:minmax(210px,1.3fr) minmax(180px,1fr) repeat(2,minmax(130px,.7fr)) auto auto; }
+#controller-app .player-toolbar > * { min-width:0; }
+#controller-app .players-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); }
+#controller-app .player-card { grid-template-columns:66px minmax(0,1fr); }
+#controller-app .player-name { white-space:normal; overflow-wrap:anywhere; line-height:1.4; }
+#controller-app .player-meta { overflow-wrap:anywhere; }
+#controller-app .link-card-heading { flex-wrap:wrap; gap:8px 16px; }
+#controller-app :is(.overlay-url-box,.ov-url-box) { overflow-wrap:anywhere; word-break:break-word; white-space:normal; user-select:all; }
+#controller-app .copy-feedback { display:none; }
+#controller-app .copy-feedback.show { display:block; color:inherit; margin:3px 0 0; }
+#controller-app .intro-field-settings { min-width:0; }
+#controller-app .intro-field-settings legend { max-width:100%; font-size:14px; line-height:1.5; }
+#controller-app :is(.toggle-wrap,.overlay-team-toggles,#intro-field-controls) { grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)) !important; }
+#controller-app :is(.toggle-wrap label,.overlay-team-toggle,#intro-field-controls label) { overflow-wrap:anywhere; min-width:0; }
+#controller-app .table-scroll { width:100%; overflow-x:auto; overscroll-behavior-x:contain; border-radius:8px; }
+#controller-app .table-scroll table { min-width:560px; }
+#controller-app #unsoldDashboards table { min-width:440px; }
+#controller-app .table-scroll th { white-space:nowrap; }
+#controller-app .dash-table td { vertical-align:middle; }
+#controller-app .team-field { margin:0; min-width:0; }
+#controller-app .team-field-title { display:none; }
+#controller-app .logo-upload input { inset:0; margin:0; padding:0; height:100%; }
+#controller-app .tournament-header a { display:inline-flex; align-items:center; min-height:44px; }
+#tournament-list { grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr)); }
+.tournament-delete { min-height:44px; bottom:16px; }
+.tournament-open { padding-right:80px; min-height:30px; }
+#add-tournament-dialog { box-sizing:border-box; max-height:calc(100dvh - 32px); overflow-y:auto; }
+#add-tournament-dialog :is(input,button) { min-height:44px; }
+#new-tournament-name { font-size:16px; }
+@media(max-width:1100px) {
+    #controller-app .player-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    #controller-app .player-toolbar :is(input,.sheet-source-input) { grid-column:1 / -1; }
+    #controller-app .player-toolbar .template-download { grid-column:auto; }
+}
+@media(max-width:760px) {
+    #controller-app { padding:12px; padding-bottom:max(32px,env(safe-area-inset-bottom)); }
+    #controller-app .card { padding:16px; margin-bottom:16px; border-radius:12px; }
+    #controller-app .players-card { padding:0; }
+    #controller-app .controller-tabs { display:flex; position:sticky; top:0; z-index:20; overflow-x:auto; gap:8px; padding:10px 0; margin-bottom:14px; background:#f0f2f5; scrollbar-width:thin; }
+    #controller-app .controller-tab-btn { flex:0 0 auto; white-space:nowrap; padding:12px 14px; border-radius:10px; }
+    #controller-app .tournament-header { margin-bottom:8px; gap:4px; }
+    #controller-app .players-hero { padding:20px 16px; }
+    #controller-app .players-hero-top { flex-wrap:wrap; gap:12px; }
+    #controller-app .players-hero h1 { font-size:23px; }
+    #controller-app .player-toolbar { padding:14px; }
+    #controller-app .players-grid { max-height:none; overflow:visible; padding:12px; gap:12px; }
+    #controller-app .player-card { grid-template-columns:58px minmax(0,1fr); gap:12px; padding:12px; }
+    #controller-app .link-card-heading { align-items:flex-start !important; flex-direction:column; }
+    #controller-app .link-card-heading h2 { margin-bottom:0; }
+    #controller-app .table-scroll { margin-top:8px; }
+    #controller-app .dash-table { font-size:14px; }
+    #controller-app .dash-table th,#controller-app .dash-table td { padding:10px 8px; }
+    #controller-app .remove-btn { min-width:72px; }
+}
+@media(max-width:600px) {
+    #controller-app .setup-header-grid { display:none; }
+    #controller-app #team-config-area .team-input-row { grid-template-columns:54px minmax(0,1fr); gap:12px; padding:14px; margin:0 0 12px; border:1px solid #dbe2ec; border-radius:10px; }
+    #controller-app .team-field-title { display:block; font-size:12px; color:#64748b; margin-bottom:4px; }
+    #controller-app .team-config-row .logo-upload { grid-column:1; grid-row:1 / 3; align-self:start; margin-top:22px; }
+    #controller-app .team-field { grid-column:2; }
+    #controller-app .team-config-row .remaining-purse { grid-column:1 / -1; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:14px; }
+    #controller-app .team-config-row .remaining-purse::before { content:'Remaining purse'; font-size:12px; align-self:center; }
+    #controller-app [data-tab-panel="setup"] .btn-group { flex-direction:column; }
+    #controller-app .photo-alignment-controls .btn-group { flex-direction:column; gap:8px; }
+    #controller-app .photo-alignment-controls button { text-align:left; padding:12px 16px; }
+    #controller-app .intro-field-settings { padding:10px !important; }
+    #controller-app .team-input-row:not(.team-config-row) { grid-template-columns:minmax(0,1fr) !important; }
+    #tournament-home { padding:28px 16px; }
+    .tournament-card { padding:22px; }
+    #add-tournament-dialog { width:calc(100vw - 32px); padding:24px 20px; }
+    .tournament-dialog-actions { flex-wrap:wrap; }
+    .tournament-dialog-actions button { flex:1; }
+}
+#controller-app .card > p { margin:10px 0 14px; line-height:1.55; }

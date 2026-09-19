@@ -1,0 +1,21 @@
+#auth-screen { min-height:100dvh; padding:48px 20px; display:grid; grid-template-columns:minmax(0,1fr); place-items:center; background:radial-gradient(ellipse at top,#ebe5ff,transparent 65%),#f5f7fb; font-family:'DM Sans',sans-serif; color:#17253d; }
+#auth-screen[hidden],#account-bar[hidden] { display:none !important; }
+.auth-card { min-width:0; box-sizing:border-box; width:min(100%,440px); padding:34px; border:1px solid #e4e6ee; border-radius:20px; background:white; box-shadow:0 16px 50px #23314d10; }
+.auth-brand { color:#6339ce;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px; }
+.auth-card h1 { font-size:30px;letter-spacing:-.8px;margin-bottom:10px; }
+.auth-subtitle { color:#65718a;line-height:1.5;font-size:14px;margin-bottom:24px; }
+.auth-card label { display:block;font-size:13px;font-weight:700;margin:16px 0 7px; }
+.auth-card input { width:100%;min-height:46px;padding:12px;border:1px solid #cbd1df;border-radius:9px;font-size:16px;box-sizing:border-box; }
+.auth-card button { min-height:44px;font:700 14px 'DM Sans',sans-serif;cursor:pointer; }
+#auth-submit { width:100%;padding:13px;border:0;background:#6339ce;color:white;border-radius:10px;margin-top:22px; }
+.auth-links { display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;margin-top:16px; }
+.auth-links button,#auth-resend { background:none;border:0;color:#6339ce;padding:8px; }
+#auth-message { margin-top:16px;line-height:1.5;font-size:13px;white-space:pre-wrap;color:#5a477e; }
+.auth-card button:disabled { opacity:.5;cursor:wait; }
+.auth-card :is(input,button):focus-visible,#account-bar button:focus-visible { outline:3px solid #b69aea;outline-offset:3px; }
+#account-bar { display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:12px 20px;border-bottom:1px solid #e0e4ee;background:#fff;font:13px 'DM Sans',sans-serif;color:#475569; }
+#account-email { overflow-wrap:anywhere;font-weight:700; }
+#cloud-status { flex:1;min-width:160px; }
+#cloud-status[data-status="error"],#cloud-status[data-status="conflict"] { color:#b42318; }
+#account-bar button { border:1px solid #dbe0ec;background:#f8f9fc;border-radius:8px;min-height:44px;padding:8px 12px;cursor:pointer;color:#4f28a3;font:700 12px 'DM Sans',sans-serif; }
+@media(max-width:520px) { .auth-card { padding:26px 20px; }#auth-screen { padding:24px 14px; }#account-bar { padding:10px 12px; }#account-email,#cloud-status { width:100%;flex:auto; } }

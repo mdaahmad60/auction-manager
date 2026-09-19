@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Local connection regression</title><body><pre id="result">RUNNING</pre><script src="../scripts/connection.js"></script><script>
+(async () => {
+    const permanentId = 'auction-' + crypto.randomUUID();
+    let controller = new AuctionPeer(permanentId);
+    const viewer = new AuctionPeer();
+    let incoming, opens = 0, stage = 'initial connection';
+    function accept(conn) {
+        incoming = conn;
+        conn.on('open', () => conn.send({type:'SYNC_ALL', bid:123}));
+        conn.on('data', data => conn.send({type:'ACK', bid:data.bid}));
+    }
+    controller.on('connection', accept);
+    const connection = viewer.connect(controller.id);
+    const waitFor = predicate => new Promise((resolve, reject) => {
+        const started = Date.now();
+        const timer = setInterval(() => {
+            if (predicate()) {clearInterval(timer); resolve();}
+            else if (Date.now()-started > 10000) {clearInterval(timer); reject(new Error(stage + ' timed out; opens=' + opens + ', last=' + JSON.stringify(last)));}
+        }, 25);
+    });
+    let last;
+    connection.on('open', () => opens++);
+    connection.on('data', data => last = data);
+    try {
+        await waitFor(() => last?.type === 'SYNC_ALL');
+        stage = 'bid delivery';
+        connection.send({bid:456});
+        await waitFor(() => last?.type === 'ACK' && last.bid === 456);
+        stage = 'reconnect';
+        incoming.close();
+        await waitFor(() => opens === 2 && last?.type === 'SYNC_ALL');
+        stage = 'controller restart';
+        controller.destroy();
+        controller = new AuctionPeer(permanentId);
+        controller.on('connection', accept);
+        await waitFor(() => opens === 3 && last?.type === 'SYNC_ALL');
+        document.getElementById('result').textContent = 'PASS: offline local handshake, initial sync, bid delivery, automatic reconnect, resync and restart with the same permanent ID';
+    } catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+    finally { document.title = document.getElementById('result').textContent; connection.close(); viewer.destroy(); controller.destroy(); }
+})();
+</script></body></html>

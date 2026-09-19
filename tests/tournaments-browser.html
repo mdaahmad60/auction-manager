@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Tournament flow regression</title></head><body><pre id="result">RUNNING</pre><iframe id="app" style="width:1280px;height:900px"></iframe><script>
+(async () => {
+ const output = document.getElementById('result'), frame = document.getElementById('app');
+ if (localStorage.length) {output.textContent='SKIP: use a clean browser profile to protect existing auctions.'; return;}
+ const navigate = url => new Promise((resolve,reject) => {const timer=setTimeout(()=>reject(new Error('Navigation timed out')),15000);frame.onload=()=>{clearTimeout(timer);resolve();};frame.src=url;});
+ const submit = name => new Promise((resolve,reject) => {const timer=setTimeout(()=>reject(new Error('Create timed out')),15000);frame.onload=()=>{clearTimeout(timer);resolve();};const w=frame.contentWindow;w.showAddTournament();w.document.getElementById('new-tournament-name').value=name;w.document.querySelector('#add-tournament-dialog form').requestSubmit();});
+ const check = (ok,message) => {if(!ok)throw new Error(message);};
+ try {
+  localStorage.setItem('auc_state_v8',JSON.stringify({teams:[{name:'Legacy team',maxPurse:1000,playerList:[]}],settings:{theme:'mmm'},basePrice:0,currentBid:0,unsoldPlayers:[]}));
+  await navigate('../index.html');
+  check(frame.contentDocument.getElementById('tournament-home').style.display === 'block','Home is first screen');
+  check(frame.contentDocument.querySelectorAll('.tournament-card').length === 1,'Existing auction migrated');
+  await submit('First Cup');
+  const firstId = new URL(frame.contentWindow.location.href).searchParams.get('tournament');
+  const overlayLink = frame.contentDocument.getElementById('overlay-url-display').textContent;
+  const overviewLink = frame.contentDocument.getElementById('overview-url-display').textContent;
+  check(frame.contentDocument.getElementById('active-tournament-name').textContent === 'First Cup','Created tournament opens');
+  frame.contentWindow.updateTeamData(0,'name','First team');
+  frame.contentWindow.updateBasePrice('100');
+  frame.contentWindow.updateBidIncrement('25');
+  frame.contentWindow.switchControllerTab('controls');
+  const checkbox=frame.contentDocument.getElementById('setPurse');
+  check(frame.contentWindow.getComputedStyle(checkbox).width === '18px','Checkbox width corrected');
+  check(frame.contentWindow.getComputedStyle(checkbox).height === '18px','Checkbox height corrected');
+  await navigate('../index.html');
+  await submit('Second Cup');
+  check(frame.contentDocument.getElementById('basePriceInput').value === '0','New auction has independent base price');
+  check(frame.contentDocument.getElementById('player-sheet-url').value === '','New auction has its own empty sheet');
+  frame.contentWindow.updateTeamData(0,'name','Second team');
+  await navigate('../index.html?tournament='+firstId);
+  check(frame.contentDocument.getElementById('overlay-url-display').textContent === overlayLink, 'Overlay link survives reopen');
+  check(frame.contentDocument.getElementById('overview-url-display').textContent === overviewLink, 'Overview link survives reopen');
+  await navigate('../index.html?tournament='+firstId);
+  check(frame.contentDocument.getElementById('overlay-url-display').textContent === overlayLink, 'Overlay link survives refresh');
+  check(frame.contentDocument.getElementById('overview-url-display').textContent === overviewLink, 'Overview link survives refresh');
+  check(frame.contentDocument.getElementById('basePriceInput').value === '100','First base price restored');
+  check(frame.contentDocument.getElementById('customStepInput').value === '25','First increment restored');
+  check(frame.contentDocument.querySelector('[data-tab-panel="controls"]').hidden === false,'Tournament tab restored');
+  const saved=JSON.parse(localStorage.getItem('auc_tournament_'+firstId+'_state'));
+  check(saved.teams[0].name === 'First team','Second tournament cannot overwrite first');
+  await navigate('../index.html');
+  check(frame.contentDocument.querySelectorAll('.tournament-card').length === 3,'Home lists all tournaments');
+  output.textContent='PASS: home, legacy migration, create/open, independent auctions, reopening, per-tournament tabs, permanent links and corrected checkboxes';
+ } catch(error) {output.textContent='FAIL: '+error.message;}
+})();
+</script></body></html>

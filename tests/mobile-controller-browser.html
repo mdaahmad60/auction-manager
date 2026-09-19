@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Controller responsive check</title><style>body{margin:0;font:12px sans-serif}pre{white-space:pre-wrap;margin:8px}iframe{display:block;border:0;height:1600px}</style><script src="../scripts/tournaments.js"></script></head><body><pre id="result">RUNNING</pre><iframe id="app"></iframe><script>
+(async () => {
+ const output=document.getElementById('result'), frame=document.getElementById('app');
+ if(localStorage.length){output.textContent='SKIP: use a clean browser profile.';return;}
+ const tournament=createTournamentRecord('Village Premier League — Mobile Review');
+ const player={id:1,serial:1,name:'A player with a longer registration name',role:'All-Rounder',village:'A longer village name',photo:''};
+ const team={name:'Northern Valley Cricket Club',maxPurse:100000,playerList:[{id:'one',seq:1,sourceSerial:2,name:'Another registered player',type:'All-Rounder',price:1000}]};
+ localStorage.setItem(tournamentStorageKey(tournament.id,'state'),JSON.stringify({teams:[team,{...team,name:'Southern Valley Cricket Club'}],settings:{theme:'mmm',showPurse:true,showNames:true,showBidding:true,teamVisibility:[false,false]},unsoldPlayers:[{id:'unsold',seq:3,name:'Unsold Player',type:'Bowler'}],currentPlayer:player,currentBid:100,basePrice:100,globalSeq:4,sheetColumns:[{key:'column:long:1',label:'A particularly long custom registration column heading'}]}));
+ localStorage.setItem(tournamentStorageKey(tournament.id,'players'),JSON.stringify([player,{...player,id:2,serial:2,name:'Second Player'}]));
+ const load=()=>new Promise(resolve=>{frame.onload=resolve;frame.src='../index.html?tournament='+tournament.id;});
+ try {
+  frame.style.width='390px';await load();
+  for(const width of [320,390,768,1280]){
+   frame.style.width=width+'px';await new Promise(resolve=>setTimeout(resolve,100));
+   for(const tab of ['players','setup','auction','dashboard','controls']){
+    frame.contentWindow.switchControllerTab(tab);
+    const doc=frame.contentDocument;
+    if(doc.documentElement.scrollWidth>width+1)throw new Error(`${tab} overflows at ${width}px: ${doc.documentElement.scrollWidth}`);
+    for(const button of doc.querySelectorAll('[data-tab-panel="'+tab+'"] button')){
+     if(button.getClientRects().length && button.getBoundingClientRect().height<44)throw new Error(`${tab}: touch target too short at ${width}px`);
+    }
+   }
+  }
+  const params=new URLSearchParams(location.search);
+  frame.style.width=(params.get('width')||390)+'px';
+  frame.contentWindow.switchControllerTab(params.get('tab')||'setup');
+  output.textContent='PASS: all five controller tabs at 320, 390, 768 and 1280px; no page overflow; 44px button targets';
+ }catch(error){output.textContent='FAIL: '+error.message;}
+ document.title=output.textContent;
+})();
+</script></body></html>

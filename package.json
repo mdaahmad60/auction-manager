@@ -1,0 +1,35 @@
+{
+  "name": "auction-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tournament auction controller with Supabase accounts and private cloud storage",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env.local scripts/serve.mjs",
+    "build": "node --env-file-if-exists=.env.local scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "build:cloudflare": "LIVE_OVERVIEW=cloudflare node --env-file-if-exists=.env.local scripts/build.mjs",
+    "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
+    "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
+    "test:cloudflare": "wrangler deploy --dry-run --outdir .wrangler/test-bundle && node tests/cloudflare-integration.mjs .wrangler/test-bundle/worker.js"
+  },
+  "devDependencies": {
+    "miniflare": "4.20260730.0",
+    "wrangler": "4.135.0",
+    "ws": "8.21.3"
+  },
+  "overrides": {
+    "miniflare@4.20260730.0": {
+      "undici": "7.29.0",
+      "sharp": "0.35.4"
+    }
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true,
+    "workerd@1.20260730.1": true,
+    "workerd@1.20260918.1": true
+  }
+}

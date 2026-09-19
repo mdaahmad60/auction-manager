@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../scripts/live-overview.js',import.meta.url),'utf8');
+test('cloud publisher sends full initial state and compact subsequent bids',()=>{
+  const context=vm.createContext({WebSocket:{OPEN:1},TextEncoder});
+  vm.runInContext(source+';globalThis.Connection=CloudOverviewConnection;',context);
+  const messages=[];
+  const connection=Object.create(context.Connection.prototype);
+  Object.assign(connection,{ready:true,socket:{readyState:1,send:text=>messages.push(JSON.parse(text))},onStatus:()=>{}});
+  const snapshot={type:'OVERVIEW_SYNC',currentPlayer:{name:'Alice'},base:100,bid:100,introFields:[],teams:[],allPlayers:[],soldSerials:[],unsoldSerials:[]};
+  connection.send(snapshot);
+  connection.send({...snapshot,bid:200});
+  connection.send({type:'OVERVIEW_BID',player:{name:'Alice'},base:100,bid:200,introFields:[]});
+  assert.equal(messages.length,2);
+  assert.equal(messages[0].type,'OVERVIEW_SYNC');
+  assert.equal(messages[1].type,'OVERVIEW_BID');
+  assert.equal(messages[1].bid,200);
+  connection.send({...snapshot,teams:[{name:'Changed'}]});
+  assert.equal(messages[2].type,'OVERVIEW_SYNC');
+  connection.ready=false; connection.send({...snapshot,bid:300});
+  assert.equal(messages.length,3);
+});
