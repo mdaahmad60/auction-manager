@@ -17,15 +17,35 @@ function animateISPL(node, frames, options = {}) {
     if (!node?.animate || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     return node.animate(frames, {duration:450, easing:ISPL_EASE, ...options});
 }
+// The real element is about to be destroyed by a full re-render (root.replaceChildren()), so its exit
+// is a two-step ghost: capture+measure it beforehand, then release (mount+animate) it after the new
+// card is in place — appending it before the wipe would just have it deleted along with everything else.
+function isplCaptureGhost(root, previousCard, selector) {
+    const el = previousCard?.querySelector?.(selector);
+    if (!el?.cloneNode || !el.getBoundingClientRect || !root?.getBoundingClientRect
+        || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null;
+    const rootRect = root.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    const ghost = el.cloneNode(true);
+    ghost.style.cssText = `position:absolute;margin:0;pointer-events:none;left:${rect.left - rootRect.left}px;top:${rect.top - rootRect.top}px;width:${rect.width}px;height:${rect.height}px;`;
+    return ghost;
+}
+function isplReleaseGhost(root, ghost, frames, options = {}) {
+    if (!ghost) return;
+    root.appendChild(ghost);
+    const animation = ghost.animate?.(frames, {duration:380, easing:'ease-in-out', fill:'forwards', ...options});
+    if (animation) animation.onfinish = () => ghost.remove();
+    else ghost.remove();
+}
 function mountISPL(root, content, frame) {
     const previous = isplPreviousFrame;
     root.append(content);
     const entrance = !previous || previous.mode !== frame.mode || previous.player !== frame.player;
     if (entrance) {
         animateISPL(content, [
-            {opacity:0, translate:frame.mode === 'player' ? '0 22px' : '-32px 0', scale:.97, filter:'blur(6px)'},
+            {opacity:0, translate:frame.mode === 'player' ? '0 64px' : '-32px 0', scale:.97, filter:'blur(6px)'},
             {opacity:1, translate:'0 0', scale:1, filter:'blur(0px)'}
-        ], {duration:ISPL_ENTER_MS});
+        ], {duration:ISPL_ENTER_MS, easing:frame.mode === 'player' ? 'ease-in' : ISPL_EASE});
     }
     if (frame.mode === 'player') {
         const changedPhase = previous?.phase !== frame.phase;
@@ -39,11 +59,16 @@ function mountISPL(root, content, frame) {
             animateISPL(content.querySelector?.('.ispl-prices'), [{opacity:0},{opacity:1}], {duration:ISPL_REVEAL_MS});
             animateISPL(content.querySelector?.('.ispl-result'),
                 isResult
-                    ? [{opacity:0,scale:.7},{opacity:1,scale:1.1,offset:.6},{opacity:1,scale:1}]
+                    ? [{opacity:0,translate:'70px 0',scale:.9},{opacity:1,translate:'0 0',scale:1}]
                     : [{opacity:0,scale:.88},{opacity:1,scale:1}],
-                isResult ? {duration:ISPL_POP_MS, easing:ISPL_SPRING} : {duration:ISPL_REVEAL_MS}
+                isResult ? {duration:ISPL_POP_MS, easing:'ease-out'} : {duration:ISPL_REVEAL_MS}
             );
-            animateISPL(content.querySelector?.('.ispl-winner'), [{opacity:0,translate:'16px 0',scale:.9},{opacity:1,translate:'0 0',scale:1}], {duration:ISPL_POP_MS, easing:ISPL_SPRING});
+            animateISPL(content.querySelector?.('.ispl-winner'), [{opacity:0,translate:'16px 0'},{opacity:1,translate:'0 0'}], {duration:ISPL_REVEAL_MS});
+            // Logo lands with a zoom-out pop: it starts large and settles to normal size, distinct from the card's own slide.
+            animateISPL(content.querySelector?.('.ispl-winner img'), [{opacity:0,scale:1.8},{opacity:1,scale:1}], {duration:ISPL_POP_MS, easing:'ease-out'});
+            if (frame.phase === 'bidding') {
+                animateISPL(content.querySelector?.('.ispl-price:last-child'), [{opacity:0,translate:'50px 0'},{opacity:1,translate:'0 0'}], {duration:ISPL_REVEAL_MS, easing:'ease-out'});
+            }
         }
         if (frame.phase === 'bidding' && previous?.bid !== frame.bid) {
             animateISPL(content.querySelector?.('.ispl-price:last-child strong'), [
@@ -106,6 +131,12 @@ function renderISPL(view) {
     const renderKey = JSON.stringify([view.settings, view.player, view.result, view.base, view.bid, view.teams, isplPage]);
     if (renderKey === isplRenderedKey) return;
     isplRenderedKey = renderKey;
+    const nextPhase = mode === 'player' && player ? (view.result?.phase || (player.phase === 'bidding' ? 'bidding' : 'intro')) : null;
+    // The gavel is about to be destroyed by the rebuild below; capture it now, release its exit once the new card is mounted.
+    let gavelGhost = null;
+    if (nextPhase === 'bidding' && isplPreviousFrame?.mode === 'player' && isplPreviousFrame.phase !== 'bidding' && !['sold','unsold'].includes(isplPreviousFrame.phase || '')) {
+        gavelGhost = isplCaptureGhost(root, root.firstElementChild, '.ispl-gavel');
+    }
     root.replaceChildren();
     if (mode === 'purse' || mode === 'squad') {
         const teams = view.teams || [];
@@ -134,7 +165,7 @@ function renderISPL(view) {
         mountISPL(root, panel, {mode, page:isplPage});
         return;
     }
-    const phase = view.result?.phase || (player.phase === 'bidding' ? 'bidding' : 'intro');
+    const phase = nextPhase;
     root.dataset.phase = phase;
     const card = isplNode('div','ispl-card');
     const portrait = isplNode('div','ispl-portrait');
@@ -176,4 +207,5 @@ function renderISPL(view) {
     category.append(isplNode('span','','CATEGORY'),isplNode('strong','',player.category || player.introValues?.category || '—'));
     card.append(prices,portrait,caption,category);
     mountISPL(root, card, {mode:'player', player:player.id || player.serial || player.name, phase, bid:view.bid});
+    isplReleaseGhost(root, gavelGhost, [{translate:'0 0',opacity:1},{translate:'-60px 0',opacity:0}]);
 }

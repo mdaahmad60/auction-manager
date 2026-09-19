@@ -63,6 +63,40 @@ test('ISPL animation helper respects reduced motion',()=>{
   vm.runInContext('animateISPL(node, [{opacity:0},{opacity:1}])',f.context);
   assert.equal(calls,1);
 });
+function ghostFixture() {
+  const f=fixture();
+  f.context.matchMedia=()=>({matches:false});
+  const appended=[];
+  const root={getBoundingClientRect:()=>({left:0,top:0}),appendChild:node=>appended.push(node)};
+  const removed=[];
+  const clone={style:{},remove:()=>removed.push(clone)};
+  clone.animate=(frames,options)=>{clone.frames=frames;clone.options=options;clone.animation={onfinish:null};return clone.animation;};
+  const found={cloneNode:()=>clone,getBoundingClientRect:()=>({left:100,top:200,width:82,height:82})};
+  const previousCard={querySelector:sel=>sel==='.ispl-gavel'?found:null};
+  Object.assign(f.context,{root,previousCard});
+  return {...f,appended,removed,clone};
+}
+test('ISPL gavel ghost is captured before the rebuild, then released (positioned + animated) after, and self-removes',()=>{
+  const f=ghostFixture();
+  vm.runInContext("globalThis.ghost = isplCaptureGhost(root, previousCard, '.ispl-gavel')",f.context);
+  assert.equal(f.appended.length,0,'capture must not touch the DOM yet — the caller still needs to replaceChildren() first');
+  vm.runInContext("isplReleaseGhost(root, ghost, [{translate:'0 0',opacity:1},{translate:'-60px 0',opacity:0}])",f.context);
+  assert.equal(f.appended[0],f.clone,'release must append the clone to the (now-rebuilt) root');
+  assert.match(f.clone.style.cssText,/left:100px/);assert.match(f.clone.style.cssText,/top:200px/);
+  assert.equal(f.clone.frames[1].translate,'-60px 0');
+  assert.equal(f.removed.length,0,'must not be removed before its exit animation finishes');
+  f.clone.animation.onfinish();
+  assert.equal(f.removed[0],f.clone);
+});
+test('ISPL gavel ghost capture is a no-op with no matching element or under reduced motion',()=>{
+  const empty=ghostFixture();
+  vm.runInContext("globalThis.ghost = isplCaptureGhost(root, {querySelector:()=>null}, '.ispl-gavel')",empty.context);
+  assert.equal(vm.runInContext('ghost',empty.context),null);
+  const reduced=ghostFixture();
+  reduced.context.matchMedia=()=>({matches:true});
+  vm.runInContext("globalThis.ghost = isplCaptureGhost(root, previousCard, '.ispl-gavel')",reduced.context);
+  assert.equal(vm.runInContext('ghost',reduced.context),null);
+});
 test('ISPL disappearance is a quick, snappy exit and a new player cancels stale cleanup',()=>{
   const f=fixture();f.send(sync());
   const root=f.get('ispl-overlay');
