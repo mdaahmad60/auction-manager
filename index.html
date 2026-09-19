@@ -1175,6 +1175,41 @@ body { margin: 0; padding: 0; }
     letter-spacing: 1px;
     margin-top: 2px;
 }
+.ov-live-stage { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 8px 4px 4px; }
+.ov-live-stage-photo-wrap { width: 190px; height: 238px; border-radius: 16px; overflow: hidden; background: #111420; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
+.ov-live-stage-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.ov-live-stage-fallback { font-family: 'Bebas Neue', sans-serif; font-size: 64px; color: rgba(255,255,255,0.22); }
+.ov-live-stage-name { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1.5px; color: #e8ecf1; overflow-wrap: anywhere; }
+.ov-live-stage-role { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+.ov-live-stage-facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; margin: 0; }
+.ov-live-stage-facts dt { font-size: 11px; color: #aab3c0; }
+.ov-live-stage-facts dd { margin: 2px 0 0; font-size: 14px; color: #e8ecf1; }
+.ov-live-stage-amounts { display: flex; width: 100%; max-width: 360px; background: #111420; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; overflow: hidden; }
+.ov-live-stage-amounts .d-value { font-size: 26px; }
+.ov-live-stage-amounts .bid-card.current::after { content: none; }
+.ov-live-result { display: block; width: 100%; position: relative; overflow: hidden; border-radius: 14px; padding: 22px 22px 24px; text-align: center; }
+.ov-live-result-sold {
+    background: linear-gradient(135deg, rgba(0,201,141,0.10) 0%, rgba(0,201,141,0.03) 60%, transparent 100%);
+    border: 1px solid rgba(0,201,141,0.25);
+    box-shadow: 0 0 40px rgba(0,201,141,0.12), inset 0 1px 0 rgba(0,201,141,0.15);
+    animation: soldReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ov-live-result-unsold {
+    background: linear-gradient(135deg, rgba(255,77,77,0.09) 0%, rgba(255,77,77,0.03) 60%, transparent 100%);
+    border: 1px solid rgba(255,77,77,0.22);
+    box-shadow: 0 0 40px rgba(255,77,77,0.10), inset 0 1px 0 rgba(255,77,77,0.12);
+    animation: unsoldReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ov-live-result-photo-wrap { width: 96px; height: 120px; border-radius: 12px; overflow: hidden; margin: 0 auto 14px; background: #111420; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
+.ov-live-result-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.ov-live-result-fallback { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: rgba(255,255,255,0.25); }
+.ov-live-result-team { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: var(--text-primary); letter-spacing: 2px; line-height: 1; animation: fadeSlideUp 0.4s ease 0.25s both; }
+.ov-live-result-player { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--text-primary); letter-spacing: 2px; line-height: 1; opacity: 0.85; animation: fadeSlideUp 0.4s ease 0.25s both; }
+@media (prefers-reduced-motion: reduce) {
+    .ov-live-result-sold, .ov-live-result-unsold, .ov-live-result .sold-word, .ov-live-result .unsold-word,
+    .ov-live-result .sold-header, .ov-live-result .unsold-header, .ov-live-result-team, .ov-live-result-player,
+    .ov-live-result .sold-meta, .ov-live-result .unsold-sub { animation: none !important; }
+}
 #controller-app .directory-unsold-switch { display: flex; align-items: center; gap: 9px; position: relative; width: fit-content; margin: 10px 0; cursor: pointer; }
 #controller-app .directory-unsold-switch input { position: absolute; opacity: 0; width: 40px; height: 24px; margin: 0; }
 .directory-switch-track { width: 40px; height: 24px; background: #64748b; border-radius: 12px; flex-shrink: 0; }
@@ -1573,6 +1608,7 @@ body { margin: 0; padding: 0; }
         <div class="ov-tabs">
             <button class="ov-tab-btn active" id="ov-tab-players" onclick="switchOvTab('players')">Players</button>
             <button class="ov-tab-btn" id="ov-tab-teams" onclick="switchOvTab('teams')">Teams</button>
+            <button class="ov-tab-btn" id="ov-tab-live" onclick="switchOvTab('live')">Live Auction</button>
         </div>
         <div class="ov-live-banner" id="ov-live-banner"></div>
     </div>
@@ -1584,6 +1620,12 @@ body { margin: 0; padding: 0; }
             </div>
         </div>
         <div id="ov-teams-pane" class="ov-pane">
+            <div class="ov-connecting">
+                <div class="ov-spinner"></div>
+                <div>Connecting to auction…</div>
+            </div>
+        </div>
+        <div id="ov-live-pane" class="ov-pane">
             <div class="ov-connecting">
                 <div class="ov-spinner"></div>
                 <div>Connecting to auction…</div>

@@ -1064,6 +1064,22 @@ function syncOverview() {
 let ovData = null;
 let ovPlayerFilter = 'all';
 let ovPlayerSearch = '';
+let ovLiveLastPlayer = null;
+let ovLiveResult = null;
+let ovLiveResultTimer = null;
+
+function handleOverviewUpdate(data) {
+    if (data.type === 'OVERVIEW_SYNC') {
+        ovData = data;
+        renderPlayersPane(data);
+        renderTeamsPane(data);
+        updateOvLiveBanner(data.currentPlayer, data.base, data.bid, data.introFields);
+        handleOvLiveSync(data);
+    } else if (data.type === 'OVERVIEW_BID') {
+        updateOvLiveBanner(data.player, data.base, data.bid, data.introFields);
+        handleOvLiveBid(data);
+    }
+}
 
 function initOverviewMode(peerId) {
     if (window.APP_CONFIG?.liveOverview === 'cloudflare') {
@@ -1073,14 +1089,7 @@ function initOverviewMode(peerId) {
                 dot.classList.toggle('connected', connected);
                 document.getElementById('ov-live-status').textContent = text;
             },
-            onData: data => {
-                if (data.type === 'OVERVIEW_SYNC') {
-                    ovData = data; renderPlayersPane(data); renderTeamsPane(data);
-                    updateOvLiveBanner(data.currentPlayer, data.base, data.bid, data.introFields);
-                } else if (data.type === 'OVERVIEW_BID') {
-                    updateOvLiveBanner(data.player, data.base, data.bid, data.introFields);
-                }
-            }
+            onData: handleOverviewUpdate
         });
         return;
     }
@@ -1091,16 +1100,7 @@ function initOverviewMode(peerId) {
         conn.on('open', () => {
             if (dot) dot.classList.add('connected');
         });
-        conn.on('data', data => {
-            if (data.type === 'OVERVIEW_SYNC') {
-                ovData = data;
-                renderPlayersPane(data);
-                renderTeamsPane(data);
-                updateOvLiveBanner(data.currentPlayer, data.base, data.bid, data.introFields);
-            } else if (data.type === 'OVERVIEW_BID') {
-                updateOvLiveBanner(data.player, data.base, data.bid, data.introFields);
-            }
-        });
+        conn.on('data', handleOverviewUpdate);
         conn.on('close', () => { if (dot) dot.classList.remove('connected'); });
         conn.on('error', () => { if (dot) dot.classList.remove('connected'); });
     });
@@ -1112,7 +1112,7 @@ function initOverviewMode(peerId) {
 }
 
 function switchOvTab(tab) {
-    for (const name of ['players', 'teams']) {
+    for (const name of ['players', 'teams', 'live']) {
         document.getElementById(`ov-${name}-pane`).classList.toggle('active', tab === name);
         document.getElementById(`ov-tab-${name}`).classList.toggle('active', tab === name);
     }
@@ -1143,17 +1143,109 @@ function updateOvLiveBanner(player, base, bid, introFields) {
     banner.innerHTML = content;
 }
 
+function handleOvLiveSync(data) {
+    const soldSet = new Set(data.soldSerials || []);
+    const unsoldSet = new Set(data.unsoldSerials || []);
+    const player = data.currentPlayer;
+    if (player && player.name) {
+        if (ovLiveResultTimer) { clearTimeout(ovLiveResultTimer); ovLiveResultTimer = null; }
+        ovLiveResult = null;
+        ovLiveLastPlayer = player;
+    } else if (ovLiveLastPlayer && ovLiveLastPlayer.serial !== null && ovLiveLastPlayer.serial !== undefined) {
+        const serial = ovLiveLastPlayer.serial;
+        if (soldSet.has(serial)) {
+            const info = buildSoldLookup(data.teams)[serial] || {};
+            ovLiveResult = { phase: 'sold', player: ovLiveLastPlayer, team: info.teamName || '', price: info.price || 0 };
+            armOvLiveResultTimer();
+        } else if (unsoldSet.has(serial)) {
+            ovLiveResult = { phase: 'unsold', player: ovLiveLastPlayer };
+            armOvLiveResultTimer();
+        }
+        ovLiveLastPlayer = null;
+    }
+    renderLiveAuctionPane(data);
+}
+
+function handleOvLiveBid(data) {
+    if (ovLiveResult) return;
+    if (data.player && data.player.name) ovLiveLastPlayer = data.player;
+    renderLiveAuctionPane({ currentPlayer: data.player, base: data.base, bid: data.bid, introFields: data.introFields });
+}
+
+function armOvLiveResultTimer() {
+    ovLiveResultTimer = setTimeout(() => {
+        ovLiveResult = null;
+        ovLiveResultTimer = null;
+        renderLiveAuctionPane(ovData || {});
+    }, 7000);
+}
+
+function renderLiveAuctionPane(data) {
+    const el = document.getElementById('ov-live-pane');
+    if (!el) return;
+    if (ovLiveResult) {
+        el.innerHTML = renderOvLiveResultHtml(ovLiveResult);
+        return;
+    }
+    const player = data?.currentPlayer;
+    if (!player || !player.name) {
+        el.innerHTML = `<div class="ov-empty">No player is currently up for auction.</div>`;
+        return;
+    }
+    el.innerHTML = renderOvLiveStageHtml(player, data.base, data.bid, data.introFields ?? ovData?.introFields);
+}
+
+function renderOvLivePhotoHtml(player, wrapClass, fallbackClass) {
+    const initial = escapeHTML((player.name || '?').trim().charAt(0).toUpperCase());
+    const photo = player.photo
+        ? `<img src="${escapeHTML(player.photo)}" alt="${escapeHTML(player.name)}" style="object-position:center ${getPhotoAlignment(player)}" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : '';
+    return `<div class="${wrapClass}">${photo}<div class="${fallbackClass}" style="${player.photo ? 'display:none' : 'display:flex'}">${initial}</div></div>`;
+}
+
+function renderOvLiveStageHtml(player, base, bid, introFields) {
+    const facts = getMMMIntroFacts(player, { introFields: introFields ?? ovData?.introFields }, base);
+    const photoHtml = renderOvLivePhotoHtml(player, 'ov-live-stage-photo-wrap', 'ov-live-stage-fallback');
+    return `<div class="ov-live-stage">
+        ${photoHtml}
+        <div>
+            <div class="ov-live-stage-name">${escapeHTML(player.name)}</div>
+            <div class="ov-live-stage-role">${escapeHTML(player.role || 'Player')}</div>
+        </div>
+        <dl class="ov-live-stage-facts">${facts.map(fact => `<div><dt>${escapeHTML(fact.label)}</dt><dd>${escapeHTML(fact.value)}</dd></div>`).join('')}</dl>
+        <div class="ov-live-stage-amounts">
+            <div class="bid-card"><div class="d-label">Base Price</div><div class="d-value">₹ ${Number(base || 0).toLocaleString('en-IN')}</div></div>
+            <div class="bid-card current"><div class="d-label blue">Current Bid</div><div class="d-value">₹ ${Number(bid || base || 0).toLocaleString('en-IN')}</div></div>
+        </div>
+    </div>`;
+}
+
+function renderOvLiveResultHtml(result) {
+    const { phase, player, team, price } = result;
+    const photoHtml = renderOvLivePhotoHtml(player, 'ov-live-result-photo-wrap', 'ov-live-result-fallback');
+    if (phase === 'sold') {
+        return `<div class="ov-live-result ov-live-result-sold">
+            <div class="sold-header"><div class="sold-word">SOLD</div><div class="sold-divider"></div></div>
+            ${photoHtml}
+            <div class="ov-live-result-team">${escapeHTML(team || '—')}</div>
+            <div class="sold-meta">${escapeHTML(player.name)} &nbsp;·&nbsp; ₹ ${Number(price || 0).toLocaleString('en-IN')}</div>
+        </div>`;
+    }
+    return `<div class="ov-live-result ov-live-result-unsold">
+        <div class="unsold-header"><div class="unsold-word">UNSOLD</div><div class="unsold-divider"></div></div>
+        ${photoHtml}
+        <div class="ov-live-result-player">${escapeHTML(player.name)}</div>
+        <div class="unsold-sub">Not acquired this round</div>
+    </div>`;
+}
+
 function setOvFilter(f) {
     ovPlayerFilter = f;
     if (ovData) renderPlayersPane(ovData);
 }
 
-function renderPlayersPane(data) {
-    const { allPlayers = [], teams = [], soldSerials = [], unsoldSerials = [] } = data;
-    const soldSet = new Set(soldSerials);
-    const unsoldSet = new Set(unsoldSerials);
-
-    // Build lookup: sourceSerial -> { teamName, price, photo }
+function buildSoldLookup(teams = []) {
+    // sourceSerial -> { teamName, price }
     const soldLookup = {};
     teams.forEach(t => {
         t.playerList.forEach(p => {
@@ -1162,6 +1254,14 @@ function renderPlayersPane(data) {
             }
         });
     });
+    return soldLookup;
+}
+
+function renderPlayersPane(data) {
+    const { allPlayers = [], teams = [], soldSerials = [], unsoldSerials = [] } = data;
+    const soldSet = new Set(soldSerials);
+    const unsoldSet = new Set(unsoldSerials);
+    const soldLookup = buildSoldLookup(teams);
 
     const soldCount = allPlayers.filter(p => soldSet.has(p.serial)).length;
     const unsoldCount = allPlayers.filter(p => unsoldSet.has(p.serial)).length;
