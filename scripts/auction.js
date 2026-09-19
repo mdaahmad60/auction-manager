@@ -3,6 +3,7 @@
 // ============================================================
 const _params = new URLSearchParams(window.location.search);
 const _overlayId = _params.get('overlay');
+const _overlayLiveId = _params.get('overlayLive');
 const _overviewId = _params.get('overview');
 const _tournamentId = _params.get('tournament');
 let activeTournament = null;
@@ -14,6 +15,8 @@ const PLAYER_SHEET_URL_KEY = tournamentStorageKey(_tournamentId, 'sheet');
 let sheetPlayers = [];
 let overlaySettings = { showBidding:true, teamVisibility:[] };
 let currentOverlayPlayer = null;
+let overlayAnimationTimer = null;
+let overlayMessageActive = false;
 
 // Stable numeric IDs preserve inline card handlers without relying on sheet order.
 function stablePlayerId(player) {
@@ -480,12 +483,12 @@ function resolveDirectoryPlayer(value) {
     }) || null;
 }
 
-if (_overlayId) {
+if (_overlayId || _overlayLiveId) {
     // ── DISPLAY MODE ──
     document.documentElement.style.cssText = 'width:1920px;height:1080px;';
     document.body.style.cssText = 'width:1920px;height:1080px;background:transparent;overflow:hidden;margin:0;padding:0;';
     document.getElementById('display-app').style.display = 'block';
-    initDisplayMode(_overlayId);
+    if (_overlayId) initDisplayMode(_overlayId); else initDisplayModeCloud(_overlayLiveId);
 } else if (_overviewId) {
     // ── OVERVIEW MODE ──
     document.body.style.cssText = 'margin:0;padding:0;background:#0a0b12;min-height:100vh;';
@@ -561,12 +564,76 @@ function resetOverlayPanels() {
     }
 }
 
+function handleOverlayData(data) {
+    receiveMMM(data);
+    if (data.type === 'BID_UPDATE') {
+        clearTimeout(overlayAnimationTimer);
+        overlayMessageActive = false;
+        currentOverlayPlayer = data.player || null;
+        updateBidNumbers(data.base, data.bid, currentOverlayPlayer);
+        resetOverlayPanels();
+        refreshOverlayVisibility();
+    }
+    if (data.type === 'BACKGROUND_BID_UPDATE') {
+        currentOverlayPlayer = data.player || null;
+        if (!overlayMessageActive) {
+            updateBidNumbers(data.base, data.bid, currentOverlayPlayer);
+            resetOverlayPanels();
+            refreshOverlayVisibility();
+        }
+    }
+    if (data.type === 'SYNC_ALL') {
+        overlaySettings = data.settings || overlaySettings;
+        currentOverlayPlayer = data.currentPlayer || null;
+        if (overlayMessageActive) {
+            // Animation playing — update balance sheet only, leave bidding panel alone
+            renderDisplayUI(data.teams, overlaySettings, currentOverlayPlayer, data.base || 0, data.bid || 0, true);
+        } else {
+            resetOverlayPanels();
+            renderDisplayUI(data.teams, overlaySettings, currentOverlayPlayer, data.base || 0, data.bid || 0);
+        }
+    }
+    if (data.type === 'SOLD_CELEBRATION') {
+        clearTimeout(overlayAnimationTimer);
+        overlayMessageActive = true;
+        document.getElementById('bidding-active').style.display = 'none';
+        document.getElementById('bidding-unsold').style.display = 'none';
+        document.getElementById('bidding-sold').style.display = 'block';
+        document.getElementById('res-team').textContent = data.team;
+        document.getElementById('res-player').textContent = data.player;
+        document.getElementById('res-price').textContent = '₹ ' + data.bid.toLocaleString('en-IN');
+        document.getElementById('left-panel').style.opacity = '1';
+        document.getElementById('left-panel').style.transform = 'translateY(0)';
+        launchSoldParticles();
+        overlayAnimationTimer = setTimeout(() => {
+            overlayMessageActive = false;
+            refreshOverlayVisibility();
+        }, 7000);
+    }
+    if (data.type === 'UNSOLD_ANIMATION') {
+        clearTimeout(overlayAnimationTimer);
+        overlayMessageActive = true;
+        document.getElementById('bidding-active').style.display = 'none';
+        document.getElementById('bidding-sold').style.display = 'none';
+        document.getElementById('bidding-unsold').style.display = 'block';
+        document.getElementById('unsold-player').textContent = data.player;
+        document.getElementById('left-panel').style.opacity = '1';
+        document.getElementById('left-panel').style.transform = 'translateY(0)';
+        overlayAnimationTimer = setTimeout(() => {
+            overlayMessageActive = false;
+            refreshOverlayVisibility();
+        }, 7000);
+    }
+    if (data.type === 'RESET_VIEW') {
+        clearTimeout(overlayAnimationTimer);
+        overlayMessageActive = false;
+        currentOverlayPlayer = null;
+        resetOverlayPanels();
+        refreshOverlayVisibility();
+    }
+}
+
 function initDisplayMode(controllerId) {
-    let animationTimer = null;
-    let overlayMessageActive = false;
-
-
-    // Update connecting status label
     document.getElementById('connecting-status').textContent = 'CONNECTING…';
 
     const peer = new AuctionPeer();   // display
@@ -584,74 +651,7 @@ function initDisplayMode(controllerId) {
         };
         conn.on('close', retryStatus);
         conn.on('retry', retryStatus);
-        conn.on('data', data => {
-            receiveMMM(data);
-            if (data.type === 'BID_UPDATE') {
-                clearTimeout(animationTimer);
-                overlayMessageActive = false;
-                currentOverlayPlayer = data.player || null;
-                updateBidNumbers(data.base, data.bid, currentOverlayPlayer);
-                resetOverlayPanels();
-                refreshOverlayVisibility();
-            }
-            if (data.type === 'BACKGROUND_BID_UPDATE') {
-                currentOverlayPlayer = data.player || null;
-                if (!overlayMessageActive) {
-                    updateBidNumbers(data.base, data.bid, currentOverlayPlayer);
-                    resetOverlayPanels();
-                    refreshOverlayVisibility();
-                }
-            }
-            if (data.type === 'SYNC_ALL') {
-                overlaySettings = data.settings || overlaySettings;
-                currentOverlayPlayer = data.currentPlayer || null;
-                if (overlayMessageActive) {
-                    // Animation playing — update balance sheet only, leave bidding panel alone
-                    renderDisplayUI(data.teams, overlaySettings, currentOverlayPlayer, data.base || 0, data.bid || 0, true);
-                } else {
-                    resetOverlayPanels();
-                    renderDisplayUI(data.teams, overlaySettings, currentOverlayPlayer, data.base || 0, data.bid || 0);
-                }
-            }
-            if (data.type === 'SOLD_CELEBRATION') {
-                clearTimeout(animationTimer);
-                overlayMessageActive = true;
-                document.getElementById('bidding-active').style.display = 'none';
-                document.getElementById('bidding-unsold').style.display = 'none';
-                document.getElementById('bidding-sold').style.display = 'block';
-                document.getElementById('res-team').textContent = data.team;
-                document.getElementById('res-player').textContent = data.player;
-                document.getElementById('res-price').textContent = '₹ ' + data.bid.toLocaleString('en-IN');
-                document.getElementById('left-panel').style.opacity = '1';
-                document.getElementById('left-panel').style.transform = 'translateY(0)';
-                launchSoldParticles();
-                animationTimer = setTimeout(() => {
-                    overlayMessageActive = false;
-                    refreshOverlayVisibility();
-                }, 7000);
-            }
-            if (data.type === 'UNSOLD_ANIMATION') {
-                clearTimeout(animationTimer);
-                overlayMessageActive = true;
-                document.getElementById('bidding-active').style.display = 'none';
-                document.getElementById('bidding-sold').style.display = 'none';
-                document.getElementById('bidding-unsold').style.display = 'block';
-                document.getElementById('unsold-player').textContent = data.player;
-                document.getElementById('left-panel').style.opacity = '1';
-                document.getElementById('left-panel').style.transform = 'translateY(0)';
-                animationTimer = setTimeout(() => {
-                    overlayMessageActive = false;
-                    refreshOverlayVisibility();
-                }, 7000);
-            }
-            if (data.type === 'RESET_VIEW') {
-                clearTimeout(animationTimer);
-                overlayMessageActive = false;
-                currentOverlayPlayer = null;
-                resetOverlayPanels();
-                refreshOverlayVisibility();
-            }
-        });
+        conn.on('data', handleOverlayData);
 
         conn.on('error', err => {
             console.warn('Display conn error:', err);
@@ -662,6 +662,20 @@ function initDisplayMode(controllerId) {
     peer.on('error', err => {
         console.warn('Display peer error:', err);
         document.getElementById('connecting-status').textContent = 'CONNECTING / RETRYING…';
+    });
+}
+
+function initDisplayModeCloud(room) {
+    document.getElementById('connecting-status').textContent = 'CONNECTING…';
+    new CloudOverviewConnection(room, {
+        syncType: 'SYNC_ALL',
+        deltaType: 'BID_UPDATE',
+        emptyMessage: {type:'RESET_VIEW'},
+        onData: handleOverlayData,
+        onStatus: connected => {
+            document.getElementById('connecting-layer').style.display = connected ? 'none' : 'flex';
+            document.getElementById('connecting-status').textContent = connected ? 'CONNECTED' : 'RECONNECTING…';
+        }
     });
 }
 
@@ -911,20 +925,23 @@ let storageWarningShown = false;
 let auctionHistory = [];
 let auctionHistoryStep = -1;
 const overlayConnections = new Set();
+let cloudOverlay = null;
 const activeConn = {
     send(data) {
         for (const conn of overlayConnections) {
             if (!conn.open) continue;
             try { conn.send(data); } catch (error) { console.warn('Overlay send failed:', error); }
         }
+        if (cloudOverlay) cloudOverlay.send(data);
     }
 };
 let overlayUrl = '';
+let overlayLiveUrl = '';
 let overviewUrl = '';
 let overviewConns = [];
 let cloudOverview = null;
 
-if (!_overlayId && !_overviewId && activeTournament) {
+if (!_overlayId && !_overlayLiveId && !_overviewId && activeTournament) {
 // Controller peers – only created in controller mode
 const ctrlPeer = new AuctionPeer(tournamentPeerId(activeTournament.id, 'overlay'));
 ctrlPeer.on('open', id => {
@@ -949,6 +966,28 @@ ctrlPeer.on('connection', conn => {
     conn.on('error', remove);
 });
 ctrlPeer.on('error', err => console.warn('Controller peer error:', err));
+
+if (window.APP_CONFIG?.liveOverview === 'cloudflare') {
+    const liveRoom = tournamentPeerId(activeTournament.id, 'overlayLive');
+    overlayLiveUrl = `${window.location.origin}${window.location.pathname}?overlayLive=${liveRoom}`;
+    const card = document.getElementById('overlay-live-card');
+    if (card) card.style.display = '';
+    const urlBox = document.getElementById('overlay-live-url-display');
+    const copyBtn = document.getElementById('copyOverlayLiveLinkBtn');
+    if (urlBox) urlBox.textContent = overlayLiveUrl;
+    if (copyBtn) copyBtn.disabled = false;
+    cloudOverlay = new CloudOverviewConnection(liveRoom, {
+        publisher: true,
+        syncType: 'SYNC_ALL',
+        deltaType: 'BID_UPDATE',
+        emptyMessage: {type:'RESET_VIEW'},
+        snapshot: conn => syncToDisplay(conn),
+        onStatus: (_, text) => {
+            const statusEl = document.getElementById('overlay-live-conn-status');
+            if (statusEl) statusEl.textContent = text;
+        }
+    });
+}
 
 let overviewPeer;
 if (window.APP_CONFIG?.liveOverview === 'cloudflare') {
@@ -992,16 +1031,25 @@ window.addEventListener('storage', event => {
     if (event.key !== TOURNAMENT_INDEX_KEY) return;
     if (!readTournamentIndex().some(t => t.id === activeTournament.id)) {
         ctrlPeer.destroy(); overviewPeer.destroy();
+        if (cloudOverlay) cloudOverlay.close();
         storageWarningShown = false;
         location.replace(tournamentUrl(null));
     }
 });
-} // end if (!_overlayId && !_overviewId)
+} // end if (!_overlayId && !_overlayLiveId && !_overviewId)
 
 function copyOverlayLink() {
     if (!overlayUrl) return;
     navigator.clipboard.writeText(overlayUrl).then(() => {
         const fb = document.getElementById('copy-feedback');
+        if (fb) { fb.classList.add('show'); setTimeout(() => fb.classList.remove('show'), 2000); }
+    });
+}
+
+function copyOverlayLiveLink() {
+    if (!overlayLiveUrl) return;
+    navigator.clipboard.writeText(overlayLiveUrl).then(() => {
+        const fb = document.getElementById('copy-overlay-live-feedback');
         if (fb) { fb.classList.add('show'); setTimeout(() => fb.classList.remove('show'), 2000); }
     });
 }
@@ -1850,15 +1898,14 @@ function resetPlayer() {
     sendBidOnly();
 }
 
-function syncToDisplay() {
-    if (!activeConn) return;
+function syncToDisplay(target = activeConn) {
     const displayTeams = state.teams.map(t => ({
         name: t.name,
         logo: t.logo,
         purse: t.maxPurse - t.playerList.reduce((sum, p) => sum + p.price, 0),
         playerList: t.playerList.map(p => ({ name: p.name, price: p.price, type: p.type }))
     }));
-    activeConn.send({ type: 'SYNC_ALL', teams: displayTeams, settings: state.settings, base: state.basePrice, bid: state.currentBid, currentPlayer: state.currentPlayer });
+    target.send({ type: 'SYNC_ALL', teams: displayTeams, settings: state.settings, base: state.basePrice, bid: state.currentBid, currentPlayer: state.currentPlayer });
 }
 
 function sendBidOnly() {

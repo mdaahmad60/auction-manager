@@ -2,7 +2,7 @@ function getAuctionStorage() { return typeof window !== 'undefined' && window.au
 const TOURNAMENT_INDEX_KEY = 'auc_tournaments_v1';
 function tournamentStorageKey(id, part) { return `auc_tournament_${id}_${part}`; }
 function tournamentPeerId(id, role) {
-    if (!id || !['overlay', 'overview'].includes(role)) throw new Error('Invalid tournament connection.');
+    if (!id || !['overlay', 'overview', 'overlayLive'].includes(role)) throw new Error('Invalid tournament connection.');
     const key = tournamentStorageKey(id, role + '-peer');
     let peerId = getAuctionStorage().getItem(key);
     if (!peerId) {

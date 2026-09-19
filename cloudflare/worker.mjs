@@ -87,10 +87,15 @@ export class AuctionRoom extends DurableObject {
       if (attachment.role !== 'publisher' || attachment.expires <= Date.now()) throw new Error('Read-only or expired connection');
       validateMessage(data);
       const previous = this.snapshot();
-      if (data.type === 'OVERVIEW_BID' && !previous) throw new Error('Full snapshot required first');
+      if (['OVERVIEW_BID','BID_UPDATE','BACKGROUND_BID_UPDATE'].includes(data.type) && !previous) throw new Error('Full snapshot required first');
       const updatedAt = Date.now();
-      const snapshot = data.type === 'OVERVIEW_SYNC' ? {...data,updatedAt} : {...previous,currentPlayer:data.player,base:data.base,bid:data.bid,introFields:data.introFields,updatedAt};
-      this.ctx.storage.sql.exec('INSERT INTO overview (id,data) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', JSON.stringify(snapshot));
+      // SOLD_CELEBRATION/UNSOLD_ANIMATION/RESET_VIEW are one-shot broadcast cues, not part of the persisted snapshot a late joiner should replay.
+      const snapshot = data.type === 'OVERVIEW_SYNC' || data.type === 'SYNC_ALL' ? {...data,updatedAt}
+        : data.type === 'OVERVIEW_BID' ? {...previous,currentPlayer:data.player,base:data.base,bid:data.bid,introFields:data.introFields,updatedAt}
+        : data.type === 'BID_UPDATE' ? {...previous,currentPlayer:data.player,base:data.base,bid:data.bid,updatedAt}
+        : data.type === 'BACKGROUND_BID_UPDATE' ? {...previous,base:data.base,bid:data.bid,updatedAt}
+        : null;
+      if (snapshot) this.ctx.storage.sql.exec('INSERT INTO overview (id,data) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', JSON.stringify(snapshot));
       this.broadcast({...data,updatedAt});
     } catch (error) {
       socket.send(JSON.stringify({type:'LIVE_ERROR',message:error.message}));

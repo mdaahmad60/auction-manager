@@ -1384,7 +1384,7 @@ body { margin: 0; padding: 0; }
 
     <div class="card" style="border-top: 4px solid #007bff;">
         <div class="link-card-heading" style="display: flex; justify-content: space-between; align-items: center;">
-            <h2>🔴 Overlay Link</h2>
+            <h2>🔴 Overlay <span style="font-size:12px;font-weight:400;color:#6c757d;">(local device only)</span></h2>
             <div id="ctrl-status" style="font-size:12px; color:#e67e00; font-weight:bold;">Status: Waiting for display to connect</div>
         </div>
         <div class="overlay-url-box" id="overlay-url-display">Generating link…</div>
@@ -1394,6 +1394,22 @@ body { margin: 0; padding: 0; }
                 <span class="copy-feedback" id="copy-feedback">Copied!</span>
             </button>
         </div>
+        <p style="font-size:12px;color:#666;margin:10px 0 0">Instant, no internet needed, on this device. Other devices/browsers connect peer-to-peer and may fail on restrictive networks — use the internet link below for those.</p>
+    </div>
+
+    <div class="card" id="overlay-live-card" style="border-top: 4px solid #7c3aed; margin-top: 0; display:none;">
+        <div class="link-card-heading" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>🌐 Overlay <span style="font-size:12px;font-weight:400;color:#6c757d;">(via Internet)</span></h2>
+            <div id="overlay-live-conn-status" style="font-size:12px; color:#6c757d; font-weight:bold;">Connecting…</div>
+        </div>
+        <div class="overlay-url-box" id="overlay-live-url-display">Generating link…</div>
+        <div class="btn-group">
+            <button id="copyOverlayLiveLinkBtn" class="btn-connect" onclick="copyOverlayLiveLink()" disabled style="flex:2; background:#7c3aed;">
+                📋 COPY OVERLAY LINK (INTERNET)
+                <span class="copy-feedback" id="copy-overlay-live-feedback">Copied!</span>
+            </button>
+        </div>
+        <p style="font-size:12px;color:#666;margin:10px 0 0">Relayed through your Cloudflare deployment. Works reliably from any device/network, with slightly higher latency than the local-device overlay.</p>
     </div>
 
     <div class="card" style="border-top: 4px solid #22c55e; margin-top: 0;">

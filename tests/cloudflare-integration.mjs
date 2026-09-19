@@ -13,7 +13,7 @@ const mf = new Miniflare({workers:[{name:'auction-test-worker',
   outboundService:request=>{
     if (request.headers.get('Authorization') !== `Bearer ${token}`) return new Response('denied',{status:401});
     if (new URL(request.url).pathname === '/auth/v1/user') return Response.json({id:'owner'});
-    return Response.json([{snapshot:{auc_tournaments_v1:'[{"id":"t"}]','auc_tournament_t_overview-peer':'auction-test'}}]);
+    return Response.json([{snapshot:{auc_tournaments_v1:'[{"id":"t"}]','auc_tournament_t_overview-peer':'auction-test','auc_tournament_t_overlayLive-peer':'auction-overlay-live'}}]);
   }
 }]});
 const sockets=[];
@@ -50,7 +50,25 @@ try {
   await until(()=>intruder.received.some(m=>m.type==='LIVE_ERROR'));
   publisher.socket.close(1000);
   await until(()=>viewers[1].received.some(m=>m.type==='LIVE_STATUS' && m.connected===false));
+
+  // Separate room for the "overlay via Internet" link — its own peer id, own message family.
+  const overlayPublisher=await connect('auction-overlay-live',true);
+  overlayPublisher.socket.send(JSON.stringify({type:'AUTH',token}));
+  await until(()=>overlayPublisher.received.some(m=>m.type==='READY'));
+  const overlaySync={type:'SYNC_ALL',teams:[{name:'Titans'}],settings:{showBidding:true},base:100,bid:100,currentPlayer:{name:'Alice'}};
+  overlayPublisher.socket.send(JSON.stringify(overlaySync));
+  const overlayViewer=await connect('auction-overlay-live');
+  await until(()=>overlayViewer.received.some(m=>m.type==='SYNC_ALL'));
+  overlayPublisher.socket.send(JSON.stringify({type:'BID_UPDATE',base:100,bid:250,player:{name:'Alice'}}));
+  await until(()=>overlayViewer.received.some(m=>m.type==='BID_UPDATE' && m.bid===250));
+  overlayPublisher.socket.send(JSON.stringify({type:'SOLD_CELEBRATION',bid:250,team:'Titans',logo:'',player:'Alice',playerDetails:{name:'Alice'}}));
+  await until(()=>overlayViewer.received.some(m=>m.type==='SOLD_CELEBRATION'));
+  // The celebration is a one-shot cue, not part of the persisted snapshot — a late joiner should see the last real bid state, not a frozen "sold" replay.
+  const overlayLateJoiner=await connect('auction-overlay-live');
+  await until(()=>overlayLateJoiner.received.some(m=>m.type==='SYNC_ALL' && m.bid===250));
+  assert.ok(!overlayLateJoiner.received.some(m=>m.type==='SOLD_CELEBRATION'), 'Late joiner must not replay a stale sold celebration');
   console.log('PASS: local Cloudflare runtime — 500 viewers, bid broadcast, reconnect snapshot, origin checks, read-only enforcement, room ownership and offline status');
+  console.log('PASS: overlay-via-Internet room — separate peer id, SYNC_ALL/BID_UPDATE persisted, celebration cues broadcast-only');
 } finally {
   sockets.forEach(ws=>{try {ws.close(1000);} catch {}});
   await mf.dispose();

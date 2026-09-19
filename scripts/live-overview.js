@@ -1,8 +1,14 @@
-/* Cloudflare transport: token stays in an authenticated message, never in a URL. */
+/* Cloudflare transport: token stays in an authenticated message, never in a URL.
+   Shared by the Overview room (OVERVIEW_SYNC/OVERVIEW_BID) and the "overlay via Internet" room
+   (SYNC_ALL/BID_UPDATE, plus one-shot SOLD_CELEBRATION/UNSOLD_ANIMATION/RESET_VIEW cues) — the
+   sync/delta type names and empty-room fallback message are configurable per room. */
 class CloudOverviewConnection {
-    constructor(room, {publisher = false, onData = () => {}, onStatus = () => {}, snapshot} = {}) {
+    constructor(room, {publisher = false, onData = () => {}, onStatus = () => {}, snapshot,
+        syncType = 'OVERVIEW_SYNC', deltaType = 'OVERVIEW_BID',
+        emptyMessage = {type:'OVERVIEW_SYNC',currentPlayer:null,base:0,bid:0,introFields:[],teams:[],allPlayers:[],soldSerials:[],unsoldSerials:[]}} = {}) {
         this.room = room; this.publisher = publisher; this.onData = onData;
         this.onStatus = onStatus; this.snapshot = snapshot; this.stopped = false;
+        this.syncType = syncType; this.deltaType = deltaType; this.emptyMessage = emptyMessage;
         this.ready = false; this.attempt = 0;
         this.connect();
         window.addEventListener('pagehide', () => this.close(), {once:true});
@@ -55,7 +61,7 @@ class CloudOverviewConnection {
                 clearInterval(this.heartbeat); this.ready = false;
                 this.onStatus(false, event.code === 4004 ? 'Tournament deleted' : event.code === 4001 ? 'Another controller is publishing. Reload to take over.' : 'Live overview disconnected — reconnecting…');
                 if ([4001,4004].includes(event.code)) this.stopped = true;
-                if (event.code === 4004 && !this.publisher) this.onData({type:'OVERVIEW_SYNC',currentPlayer:null,base:0,bid:0,introFields:[],teams:[],allPlayers:[],soldSerials:[],unsoldSerials:[]});
+                if (event.code === 4004 && !this.publisher) this.onData(this.emptyMessage);
                 this.retry();
             };
         } catch (error) {
@@ -70,11 +76,12 @@ class CloudOverviewConnection {
     send(message) {
         // On reconnect, send a fresh snapshot rather than replaying stale bids.
         if (!this.ready || this.socket?.readyState !== WebSocket.OPEN) return;
+        const syncType = this.syncType || 'OVERVIEW_SYNC', deltaType = this.deltaType || 'OVERVIEW_BID';
         let nextCore = this.lastCore;
-        if (message.type === 'OVERVIEW_SYNC') {
+        if (message.type === syncType) {
             const {currentPlayer,base,bid,...core} = message;
             const signature = JSON.stringify(core);
-            if (signature === this.lastCore) message = {type:'OVERVIEW_BID',player:currentPlayer,base,bid,introFields:message.introFields};
+            if (signature === this.lastCore) message = {type:deltaType,player:currentPlayer,base,bid,introFields:message.introFields};
             nextCore = signature;
         }
         const text = JSON.stringify(message);
