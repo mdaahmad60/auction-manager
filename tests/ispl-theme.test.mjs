@@ -63,7 +63,7 @@ test('ISPL animation helper respects reduced motion',()=>{
   vm.runInContext('animateISPL(node, [{opacity:0},{opacity:1}])',f.context);
   assert.equal(calls,1);
 });
-test('ISPL disappearance lasts 2.5 seconds and a new player cancels stale cleanup',()=>{
+test('ISPL disappearance is a quick, snappy exit and a new player cancels stale cleanup',()=>{
   const f=fixture();f.send(sync());
   const root=f.get('ispl-overlay');
   Object.defineProperty(root,'firstElementChild',{get:()=>root.children[0]});
@@ -71,7 +71,10 @@ test('ISPL disappearance lasts 2.5 seconds and a new player cancels stale cleanu
   const animation={cancel(){cancelled=true;}};
   root.children[0].animate=(_,options)=>{duration=options.duration;return animation;};
   f.send(sync({currentPlayer:null}));
-  assert.equal(duration,2500);assert.equal(root.hidden,false);
+  const exitDuration=vm.runInContext('ISPL_EXIT_MS',f.context);
+  assert.equal(duration,exitDuration);
+  assert.ok(exitDuration<1000,'exit should be snappy, not the old 2.5s crawl');
+  assert.equal(root.hidden,false);
   f.send(sync({currentPlayer:{...player,name:'Next'}}));
   assert.equal(cancelled,true);assert.equal(animation.onfinish,null);
   assert.equal(root.hidden,false);assert.match(f.text(),/Next/);
@@ -79,7 +82,7 @@ test('ISPL disappearance lasts 2.5 seconds and a new player cancels stale cleanu
   f.send(sync({currentPlayer:null}));animation.onfinish();
   assert.equal(root.hidden,true);assert.equal(root.children.length,0);
 });
-test('ISPL entrance, bidding and sold transitions use 2.5 seconds',()=>{
+test('ISPL entrance, bidding and sold transitions use short, purpose-tuned durations',()=>{
   const f=fixture();const durations=[];
   f.context.root={append(){}};
   const content={animate:(_,options)=>durations.push(options.duration)};
@@ -89,6 +92,9 @@ test('ISPL entrance, bidding and sold transitions use 2.5 seconds',()=>{
     f.context.frame={mode:'player',player:'same',phase,bid:100};
     vm.runInContext('mountISPL(root,content,frame)',f.context);
   }
+  const named=['ISPL_ENTER_MS','ISPL_SHIFT_MS','ISPL_REVEAL_MS','ISPL_POP_MS'].map(name=>vm.runInContext(name,f.context));
   assert.ok(durations.length>3);
-  assert.ok(durations.every(duration=>duration===2500));
+  assert.ok(durations.every(duration=>named.includes(duration)),'every requested duration should be one of the named ISPL timing constants');
+  assert.ok(durations.every(duration=>duration<1000),'transitions should be snappy, not the old 2.5s crawl');
+  assert.ok(new Set(durations).size>1,'structural moves and the sold-result pop should use different, purpose-tuned durations');
 });

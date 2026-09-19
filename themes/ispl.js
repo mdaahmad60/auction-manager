@@ -4,37 +4,57 @@ let isplPageTimer = null;
 let isplLastPanel = '';
 let isplRenderedKey = '';
 let isplPreviousFrame = null;
-const ISPL_TRANSITION_MS = 2500;
+// Purpose-tuned durations: structural moves stay snappy, the sold/unsold reveal gets an energetic spring pop.
+const ISPL_ENTER_MS = 620;
+const ISPL_SHIFT_MS = 460;
+const ISPL_REVEAL_MS = 520;
+const ISPL_POP_MS = 640;
+const ISPL_EXIT_MS = 420;
+const ISPL_EASE = 'cubic-bezier(.22,1,.36,1)';
+const ISPL_SPRING = 'cubic-bezier(.34,1.56,.64,1)';
 let isplExitAnimation = null;
 function animateISPL(node, frames, options = {}) {
     if (!node?.animate || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    return node.animate(frames, {duration:450, easing:'cubic-bezier(.22,1,.36,1)', ...options});
+    return node.animate(frames, {duration:450, easing:ISPL_EASE, ...options});
 }
 function mountISPL(root, content, frame) {
     const previous = isplPreviousFrame;
     root.append(content);
     const entrance = !previous || previous.mode !== frame.mode || previous.player !== frame.player;
     if (entrance) {
-        animateISPL(content, [{opacity:0, translate:frame.mode === 'player' ? '0 28px' : '-40px 0'}, {opacity:1, translate:'0 0'}], {duration:ISPL_TRANSITION_MS});
+        animateISPL(content, [
+            {opacity:0, translate:frame.mode === 'player' ? '0 22px' : '-32px 0', scale:.97, filter:'blur(6px)'},
+            {opacity:1, translate:'0 0', scale:1, filter:'blur(0px)'}
+        ], {duration:ISPL_ENTER_MS});
     }
     if (frame.mode === 'player') {
         const changedPhase = previous?.phase !== frame.phase;
         if (!entrance && changedPhase) {
             const offset = (['sold','unsold'].includes(previous.phase) ? 12 : 295)
                 - (['sold','unsold'].includes(frame.phase) ? 12 : 295);
-            animateISPL(content.querySelector?.('.ispl-portrait'), [{translate:`${offset}px 0`},{translate:'0 0'}], {duration:ISPL_TRANSITION_MS});
+            animateISPL(content.querySelector?.('.ispl-portrait'), [{translate:`${offset}px 0`},{translate:'0 0'}], {duration:ISPL_SHIFT_MS});
         }
         if (entrance || changedPhase) {
-            animateISPL(content.querySelector?.('.ispl-prices'), [{opacity:0},{opacity:1}], {duration:ISPL_TRANSITION_MS});
-            animateISPL(content.querySelector?.('.ispl-result'), [{opacity:0,scale:'.88'},{opacity:1,scale:'1'}], {duration:ISPL_TRANSITION_MS});
-            animateISPL(content.querySelector?.('.ispl-winner'), [{opacity:0,translate:'18px 0'},{opacity:1,translate:'0 0'}], {duration:ISPL_TRANSITION_MS});
+            const isResult = frame.phase === 'sold' || frame.phase === 'unsold';
+            animateISPL(content.querySelector?.('.ispl-prices'), [{opacity:0},{opacity:1}], {duration:ISPL_REVEAL_MS});
+            animateISPL(content.querySelector?.('.ispl-result'),
+                isResult
+                    ? [{opacity:0,scale:.7},{opacity:1,scale:1.1,offset:.6},{opacity:1,scale:1}]
+                    : [{opacity:0,scale:.88},{opacity:1,scale:1}],
+                isResult ? {duration:ISPL_POP_MS, easing:ISPL_SPRING} : {duration:ISPL_REVEAL_MS}
+            );
+            animateISPL(content.querySelector?.('.ispl-winner'), [{opacity:0,translate:'16px 0',scale:.9},{opacity:1,translate:'0 0',scale:1}], {duration:ISPL_POP_MS, easing:ISPL_SPRING});
         }
         if (frame.phase === 'bidding' && previous?.bid !== frame.bid) {
-            animateISPL(content.querySelector?.('.ispl-price:last-child strong'), [{scale:'1',color:'#fff'},{scale:'1.09',color:'#fcf23b',offset:.35},{scale:'1',color:'#fff'}]);
+            animateISPL(content.querySelector?.('.ispl-price:last-child strong'), [
+                {scale:'1',color:'#fff',textShadow:'0 0 0px transparent'},
+                {scale:'1.12',color:'#fcf23b',textShadow:'0 0 20px #fcf23bcc',offset:.4},
+                {scale:'1',color:'#fff',textShadow:'0 0 0px transparent'}
+            ], {duration:420});
         }
     } else if (entrance || previous?.page !== frame.page) {
         Array.from(content.querySelectorAll?.('.ispl-team-row') || []).forEach((row,index) => {
-            animateISPL(row, [{opacity:0,translate:'-24px 0'},{opacity:1,translate:'0 0'}], {delay:index*55,fill:'backwards'});
+            animateISPL(row, [{opacity:0,translate:'-18px 0',scale:.97},{opacity:1,translate:'0 0',scale:1}], {duration:380,delay:index*40,fill:'backwards'});
         });
     }
     isplPreviousFrame = frame;
@@ -70,7 +90,7 @@ function renderISPL(view) {
             isplPreviousFrame = null; isplRenderedKey = ''; isplExitAnimation = null;
         };
         const content = root.firstElementChild;
-        isplExitAnimation = animateISPL(content, [{opacity:1,translate:'0 0'},{opacity:0,translate:'0 40px'}], {duration:ISPL_TRANSITION_MS,fill:'forwards'});
+        isplExitAnimation = animateISPL(content, [{opacity:1,translate:'0 0',scale:1},{opacity:0,translate:'0 30px',scale:.97}], {duration:ISPL_EXIT_MS,fill:'forwards'});
         if (isplExitAnimation) isplExitAnimation.onfinish = finish;
         else finish();
         return;
