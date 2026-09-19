@@ -1421,8 +1421,10 @@ function selectedIntroValues(player) {
 function renderIntroFieldControls() {
     const container = document.getElementById('intro-field-controls');
     if (!container) return;
-    const selected = getMMMIntroFields(state.settings);
-    const choices = new Map([{key:'village',label:'Village'}, {key:'panchayat',label:'Panchayat'}, {key:'basePrice',label:'Base price'}, ...(state.sheetColumns || []), ...selected].map(field => [field.key, field]));
+    const choices = new Map([{key:'basePrice',label:'Base price'}, ...(state.sheetColumns || [])].map(field => [field.key, field]));
+    const rawSelected = getMMMIntroFields(state.settings);
+    const selected = rawSelected.filter(item => choices.has(item.key));
+    if (selected.length !== rawSelected.length) state.settings.introFields = selected;
     container.replaceChildren();
     for (const field of choices.values()) {
         const label = document.createElement('label');

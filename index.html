@@ -1357,6 +1357,31 @@ body { margin: 0; padding: 0; }
     </section>
 
     <section class="tab-panel" data-tab-panel="controls" hidden>
+    <div class="card">
+        <h2>Display Overlay Controls</h2>
+        <label for="overlayTheme">Overlay theme</label>
+        <select id="overlayTheme" onchange="updateSettings()">
+            <option value="classic">Classic</option>
+            <option value="mmm">MMM Purple</option>
+        </select>
+        <p style="font-size:12px;color:#666">MMM Purple: select a player to introduce them. Changing the bid automatically switches to bidding. Select the next player whenever you are ready.</p>
+        <div class="toggle-wrap">
+            <label><input type="checkbox" id="setPurse" onchange="updateSettings()"> Show Team Purse</label>
+            <label><input type="checkbox" id="setNames" onchange="updateSettings()"> Show Player Names</label>
+            <label><input type="checkbox" id="setBidding" onchange="updateSettings()"> Show Bidding UI</label>
+            <label><input type="checkbox" id="setTopPlayers" onchange="updateSettings()"> Show Top 10 Players</label>
+        </div>
+        <fieldset class="intro-field-settings" style="margin-top:18px;border:1px solid #ddd;border-radius:8px;padding:14px">
+            <legend>Initial player overlay information · MMM Purple</legend>
+            <p style="font-size:12px;color:#666;margin-top:0">Choose the sheet columns to show before bidding. Name, photo and role stay in the player header. Refresh the player sheet to discover new columns.</p>
+            <div id="intro-field-controls" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+        </fieldset>
+        <div style="margin-top: 12px;">
+            <div style="font-size: 12px; font-weight: 700; color: #6c757d; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px;">Team details on overlay</div>
+            <div id="overlay-team-toggles" class="overlay-team-toggles"></div>
+        </div>
+    </div>
+
     <div class="card" style="border-top: 4px solid #007bff;">
         <div class="link-card-heading" style="display: flex; justify-content: space-between; align-items: center;">
             <h2>🔴 Overlay Link</h2>
@@ -1382,31 +1407,6 @@ body { margin: 0; padding: 0; }
                 📋 COPY OVERVIEW LINK
                 <span class="copy-feedback" id="copy-overview-feedback">Copied!</span>
             </button>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Display Overlay Controls</h2>
-        <label for="overlayTheme">Overlay theme</label>
-        <select id="overlayTheme" onchange="updateSettings()">
-            <option value="classic">Classic</option>
-            <option value="mmm">MMM Purple</option>
-        </select>
-        <p style="font-size:12px;color:#666">MMM Purple: select a player to introduce them. Changing the bid automatically switches to bidding. Select the next player whenever you are ready.</p>
-        <div class="toggle-wrap">
-            <label><input type="checkbox" id="setPurse" onchange="updateSettings()"> Show Team Purse</label>
-            <label><input type="checkbox" id="setNames" onchange="updateSettings()"> Show Player Names</label>
-            <label><input type="checkbox" id="setBidding" onchange="updateSettings()"> Show Bidding UI</label>
-            <label><input type="checkbox" id="setTopPlayers" onchange="updateSettings()"> Show Top 10 Players</label>
-        </div>
-        <fieldset class="intro-field-settings" style="margin-top:18px;border:1px solid #ddd;border-radius:8px;padding:14px">
-            <legend>Initial player overlay information · MMM Purple</legend>
-            <p style="font-size:12px;color:#666;margin-top:0">Choose the sheet columns to show before bidding. Name, photo and role stay in the player header. Refresh the player sheet to discover new columns.</p>
-            <div id="intro-field-controls" style="display:flex;flex-wrap:wrap;gap:12px"></div>
-        </fieldset>
-        <div style="margin-top: 12px;">
-            <div style="font-size: 12px; font-weight: 700; color: #6c757d; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px;">Team details on overlay</div>
-            <div id="overlay-team-toggles" class="overlay-team-toggles"></div>
         </div>
     </div>
 
