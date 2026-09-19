@@ -100,6 +100,67 @@ async function submitTournament(event) {
     } catch (error) { document.getElementById('tournament-form-error').textContent = error.message; }
 }
 
+// Backup-file "values" (key -> string, same shape as storage) held only while the import dialog is open.
+let importBackupValues = null;
+function showImportTournament() {
+    importBackupValues = null;
+    document.getElementById('import-tournament-file').value = '';
+    document.getElementById('import-tournament-error').textContent = '';
+    document.getElementById('import-tournament-list').replaceChildren();
+    document.getElementById('import-tournament-dialog').showModal();
+}
+async function handleImportBackupFile(input) {
+    const errorEl = document.getElementById('import-tournament-error');
+    const listEl = document.getElementById('import-tournament-list');
+    errorEl.textContent = ''; listEl.replaceChildren(); importBackupValues = null;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+        const parsed = JSON.parse(await file.text());
+        if (parsed?.format !== 'auction-workspace-v1' || !parsed.values || typeof parsed.values !== 'object') {
+            throw new Error('This does not look like a tournament backup file.');
+        }
+        importBackupValues = parsed.values;
+        const tournaments = JSON.parse(importBackupValues['auc_tournaments_v1'] || '[]');
+        if (!Array.isArray(tournaments) || !tournaments.length) throw new Error('No tournaments found in this backup.');
+        for (const t of tournaments) {
+            if (!t?.id || !t.name) continue;
+            const row = document.createElement('div'); row.className = 'import-tournament-row';
+            const label = document.createElement('span'); label.textContent = t.name;
+            const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Import';
+            button.onclick = () => importTournamentFromBackup(t.id, t.name, button);
+            row.append(label, button); listEl.appendChild(row);
+        }
+    } catch (error) {
+        errorEl.textContent = error.message || 'Could not read this file.';
+    }
+}
+async function importTournamentFromBackup(sourceId, name, button) {
+    const errorEl = document.getElementById('import-tournament-error');
+    errorEl.textContent = '';
+    if (button) button.disabled = true;
+    try {
+        if (!importBackupValues) throw new Error('Choose a backup file first.');
+        const newId = crypto.randomUUID();
+        const prefix = tournamentStorageKey(sourceId, '');
+        // Fresh room/peer IDs get generated on first use — reusing the backup's would connect a new
+        // tournament to an old, unrelated broadcast room.
+        const skipSuffixes = ['overlay-peer', 'overview-peer', 'overlayLive-peer'];
+        for (const key of Object.keys(importBackupValues)) {
+            if (!key.startsWith(prefix) || skipSuffixes.includes(key.slice(prefix.length))) continue;
+            getAuctionStorage().setItem(tournamentStorageKey(newId, key.slice(prefix.length)), importBackupValues[key]);
+        }
+        const index = readTournamentIndex();
+        index.push({id: newId, name, createdAt: new Date().toISOString()});
+        getAuctionStorage().setItem(TOURNAMENT_INDEX_KEY, JSON.stringify(index));
+        if (getAuctionStorage().flush) await getAuctionStorage().flush();
+        location.href = tournamentUrl(newId);
+    } catch (error) {
+        errorEl.textContent = error.message || 'Import failed.';
+        if (button) button.disabled = false;
+    }
+}
+
 function deleteTournamentRecord(id) {
     const index = readTournamentIndex();
     if (!index.some(t => t.id === id)) return;

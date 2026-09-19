@@ -1193,12 +1193,23 @@ body { margin: 0; padding: 0; }
      ============================================= -->
 <main id="tournament-home" style="display:none">
     <div class="tournament-kicker">Auction manager</div>
-    <div class="tournament-home-heading"><div><h1>Your tournaments</h1><p>Set up a tournament, build your teams, and run the auction.</p></div><button class="tournament-primary" onclick="showAddTournament()">+ Add tournament</button></div>
+    <div class="tournament-home-heading"><div><h1>Your tournaments</h1><p>Set up a tournament, build your teams, and run the auction.</p></div><div class="tournament-home-actions"><button class="tournament-cancel" onclick="showImportTournament()">⇪ Import tournament</button><button class="tournament-primary" onclick="showAddTournament()">+ Add tournament</button></div></div>
     <p id="tournament-home-status" role="status"></p><div id="tournament-count"></div>
     <div id="tournament-list"></div>
-    <div id="tournament-empty" hidden><span class="tournament-icon">🏆</span><h2>Your next auction starts here</h2><p>Create your first tournament to get started.</p><button class="tournament-primary" onclick="showAddTournament()">+ Add tournament</button></div>
+    <div id="tournament-empty" hidden><span class="tournament-icon">🏆</span><h2>Your next auction starts here</h2><p>Create your first tournament to get started, or import one from a backup file.</p><div class="tournament-home-actions" style="justify-content:center"><button class="tournament-cancel" onclick="showImportTournament()">⇪ Import tournament</button><button class="tournament-primary" onclick="showAddTournament()">+ Add tournament</button></div></div>
 </main>
 <dialog id="add-tournament-dialog"><form onsubmit="submitTournament(event)"><h2>Add tournament</h2><label for="new-tournament-name">Tournament name</label><input id="new-tournament-name" required maxlength="100" autocomplete="off" placeholder="e.g. Village Premier League 2026"><p id="tournament-form-error" role="alert"></p><div class="tournament-dialog-actions"><button type="button" class="tournament-cancel" onclick="document.getElementById('add-tournament-dialog').close()">Cancel</button><button class="tournament-primary" type="submit">Create tournament</button></div></form></dialog>
+<dialog id="import-tournament-dialog">
+    <h2>Import tournament</h2>
+    <p class="import-tournament-hint">Choose a backup file from "Download backup" (account menu), then pick which tournament inside it to bring in here as a new tournament — with its teams, sales and settings intact.</p>
+    <label for="import-tournament-file">Backup file (.json)</label>
+    <input type="file" id="import-tournament-file" accept="application/json,.json" onchange="handleImportBackupFile(this)">
+    <p id="import-tournament-error" role="alert"></p>
+    <div id="import-tournament-list"></div>
+    <div class="tournament-dialog-actions">
+        <button type="button" class="tournament-cancel" onclick="document.getElementById('import-tournament-dialog').close()">Cancel</button>
+    </div>
+</dialog>
 <div id="controller-app" style="display:none">
     <header class="tournament-header"><a id="all-tournaments-link" href="./">← All tournaments</a><h1 id="active-tournament-name"></h1></header>
 
