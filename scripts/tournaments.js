@@ -44,14 +44,63 @@ function migrateLegacyTournament() {
     getAuctionStorage().setItem(TOURNAMENT_INDEX_KEY, JSON.stringify(index));
     return index;
 }
-function createTournamentRecord(name) {
+function createTournamentRecord(name, logo) {
     name = name.trim();
     if (!name) throw new Error('Enter a tournament name.');
     if (name.length > 100) throw new Error('Use a name of 100 characters or fewer.');
     const index = readTournamentIndex();
-    const tournament = {id:crypto.randomUUID(),name,createdAt:new Date().toISOString()};
+    const tournament = {id:crypto.randomUUID(), name, createdAt:new Date().toISOString(), ...(logo ? {logo} : {})};
     getAuctionStorage().setItem(TOURNAMENT_INDEX_KEY, JSON.stringify([...index,tournament]));
     return tournament;
+}
+function updateTournamentRecord(id, patch) {
+    const index = readTournamentIndex();
+    const i = index.findIndex(t => t.id === id);
+    if (i === -1) throw new Error('Tournament not found.');
+    const name = (patch.name ?? index[i].name).trim();
+    if (!name) throw new Error('Enter a tournament name.');
+    if (name.length > 100) throw new Error('Use a name of 100 characters or fewer.');
+    const updated = {...index[i], ...patch, name};
+    if (!updated.logo) delete updated.logo;
+    index[i] = updated;
+    getAuctionStorage().setItem(TOURNAMENT_INDEX_KEY, JSON.stringify(index));
+    return updated;
+}
+// Shared by the create and edit tournament dialogs: resize to a small square PNG data URI, same
+// approach as the existing team-logo upload (scripts/auction.js handleLogoUpload).
+function readResizedTournamentLogo(file, onReady) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_SIZE = 150;
+            let width = img.width, height = img.height;
+            if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
+            else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            onReady(canvas.toDataURL('image/png'));
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+function renderTournamentLogoBox(elementId, dataUri, onChangeAttr, ariaLabel) {
+    const box = document.getElementById(elementId);
+    if (!box) return;
+    box.innerHTML = (dataUri ? `<img src="${dataUri}" alt="">` : 'ADD<br>LOGO')
+        + `<input type="file" aria-label="${escapeHTML(ariaLabel)}" accept="image/*" onchange="${onChangeAttr}">`;
+}
+let newTournamentLogo = null;
+function handleNewTournamentLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    readResizedTournamentLogo(file, dataUri => {
+        newTournamentLogo = dataUri;
+        renderTournamentLogoBox('new-tournament-logo-preview', dataUri, 'handleNewTournamentLogo(event)', 'Upload tournament logo');
+    });
 }
 function tournamentUrl(id) {
     const url = new URL(location.href); url.search = ''; url.hash = '';
@@ -69,7 +118,13 @@ function initTournamentHome() {
         for (const tournament of tournaments) {
             const card = document.createElement('article'); card.className = 'tournament-card';
             const link = document.createElement('a'); link.className = 'tournament-card-link'; link.href = tournamentUrl(tournament.id);
-            const icon = document.createElement('span'); icon.className = 'tournament-icon'; icon.textContent = '🏆';
+            let icon;
+            if (tournament.logo) {
+                icon = document.createElement('img'); icon.className = 'tournament-icon'; icon.alt = ''; icon.src = tournament.logo;
+                icon.onerror = () => { const fallback = document.createElement('span'); fallback.className = 'tournament-icon'; fallback.textContent = '🏆'; icon.replaceWith(fallback); };
+            } else {
+                icon = document.createElement('span'); icon.className = 'tournament-icon'; icon.textContent = '🏆';
+            }
             const title = document.createElement('h2'); title.textContent = tournament.name;
             const info = document.createElement('p');
             try {
@@ -89,12 +144,14 @@ function showAddTournament() {
     const dialog = document.getElementById('add-tournament-dialog');
     document.getElementById('new-tournament-name').value = '';
     document.getElementById('tournament-form-error').textContent = '';
+    newTournamentLogo = null;
+    renderTournamentLogoBox('new-tournament-logo-preview', null, 'handleNewTournamentLogo(event)', 'Upload tournament logo');
     dialog.showModal(); document.getElementById('new-tournament-name').focus();
 }
 async function submitTournament(event) {
     event.preventDefault();
     try {
-        const tournament = createTournamentRecord(document.getElementById('new-tournament-name').value);
+        const tournament = createTournamentRecord(document.getElementById('new-tournament-name').value, newTournamentLogo);
         if (getAuctionStorage().flush) await getAuctionStorage().flush();
         location.href = tournamentUrl(tournament.id);
     } catch (error) { document.getElementById('tournament-form-error').textContent = error.message; }

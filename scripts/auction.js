@@ -499,13 +499,49 @@ if (_overlayId || _overlayLiveId) {
     document.body.style.background = '#f0f2f5';
     if (activeTournament) {
         document.getElementById('controller-app').style.display = 'block';
-        document.getElementById('active-tournament-name').textContent = activeTournament.name;
+        renderTournamentHeader();
         document.getElementById('all-tournaments-link').href = tournamentUrl(null);
         initControllerMode();
     } else {
         document.getElementById('tournament-home').style.display = 'block';
         queueMicrotask(initTournamentHome);
     }
+}
+
+function renderTournamentHeader() {
+    document.getElementById('active-tournament-name').textContent = activeTournament.name;
+    const logoEl = document.getElementById('active-tournament-logo');
+    if (activeTournament.logo) { logoEl.src = activeTournament.logo; logoEl.hidden = false; }
+    else { logoEl.hidden = true; logoEl.removeAttribute('src'); }
+}
+
+// undefined = logo left unchanged; null = explicitly cleared; string = newly uploaded.
+let editTournamentLogo;
+function showEditTournament() {
+    editTournamentLogo = undefined;
+    document.getElementById('edit-tournament-name').value = activeTournament.name;
+    document.getElementById('edit-tournament-form-error').textContent = '';
+    renderTournamentLogoBox('edit-tournament-logo-preview', activeTournament.logo || null, 'handleEditTournamentLogo(event)', 'Upload tournament logo');
+    document.getElementById('edit-tournament-dialog').showModal();
+}
+function handleEditTournamentLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    readResizedTournamentLogo(file, dataUri => {
+        editTournamentLogo = dataUri;
+        renderTournamentLogoBox('edit-tournament-logo-preview', dataUri, 'handleEditTournamentLogo(event)', 'Upload tournament logo');
+    });
+}
+async function submitEditTournament(event) {
+    event.preventDefault();
+    try {
+        const patch = { name: document.getElementById('edit-tournament-name').value };
+        if (editTournamentLogo !== undefined) patch.logo = editTournamentLogo;
+        activeTournament = updateTournamentRecord(_tournamentId, patch);
+        if (getAuctionStorage().flush) await getAuctionStorage().flush();
+        renderTournamentHeader();
+        document.getElementById('edit-tournament-dialog').close();
+    } catch (error) { document.getElementById('edit-tournament-form-error').textContent = error.message; }
 }
 
 
