@@ -1091,6 +1091,7 @@ function sendOverviewSync(conn) {
                 serial: p.serial,
                 name: p.name,
                 role: p.role || 'Player',
+                category: p.category || '',
                 photo: p.photo || ''
             })),
             soldSerials,
@@ -1114,6 +1115,7 @@ function syncOverview() {
 // ============================================================
 let ovData = null;
 let ovPlayerFilter = 'all';
+let ovPlayerCategory = 'all';
 let ovPlayerSearch = '';
 let ovLiveLastPlayer = null;
 let ovLiveResult = null;
@@ -1277,6 +1279,11 @@ function setOvFilter(f) {
     if (ovData) renderPlayersPane(ovData);
 }
 
+function setOvCategoryFilter(category) {
+    ovPlayerCategory = category;
+    if (ovData) renderPlayersPane(ovData);
+}
+
 function buildSoldLookup(teams = []) {
     // sourceSerial -> { teamName, price }
     const soldLookup = {};
@@ -1300,6 +1307,9 @@ function renderPlayersPane(data) {
     const unsoldCount = allPlayers.filter(p => unsoldSet.has(p.serial)).length;
     const availCount = allPlayers.length - soldCount - unsoldCount;
 
+    const categories = [...new Set(allPlayers.map(p => p.category).filter(Boolean))].sort();
+    if (ovPlayerCategory !== 'all' && !categories.includes(ovPlayerCategory)) ovPlayerCategory = 'all';
+
     const search = ovPlayerSearch.toLowerCase();
     let filtered = allPlayers.filter(p => {
         if (ovPlayerFilter === 'sold') return soldSet.has(p.serial);
@@ -1307,6 +1317,7 @@ function renderPlayersPane(data) {
         if (ovPlayerFilter === 'available') return !soldSet.has(p.serial) && !unsoldSet.has(p.serial);
         return true;
     });
+    if (ovPlayerCategory !== 'all') filtered = filtered.filter(p => (p.category || '') === ovPlayerCategory);
     if (search) filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(search) || (p.role || '').toLowerCase().includes(search)
     );
@@ -1321,6 +1332,10 @@ function renderPlayersPane(data) {
     const chipsHtml = Object.entries(chipLabels).map(([f, label]) =>
         `<button class="ov-chip ${ovPlayerFilter === f ? 'active' : ''}" onclick="setOvFilter('${f}')">${label}</button>`
     ).join('');
+    const categorySelectHtml = categories.length ? `<select class="ov-category-select" onchange="setOvCategoryFilter(this.value)">
+        <option value="all" ${ovPlayerCategory === 'all' ? 'selected' : ''}>All categories</option>
+        ${categories.map(c => `<option value="${escapeHTML(c)}" ${ovPlayerCategory === c ? 'selected' : ''}>${escapeHTML(c)}</option>`).join('')}
+    </select>` : '';
 
     const cardsHtml = filtered.length ? filtered.map(p => {
         const sold = soldSet.has(p.serial);
@@ -1338,8 +1353,8 @@ function renderPlayersPane(data) {
         return `<div class="ov-player-card">
             ${photoHtml}${fallbackHtml}
             <div class="ov-player-info">
-                <div class="ov-player-name">${escapeHTML(p.name)}</div>
-                <div class="ov-player-role">${escapeHTML(p.role || 'Player')}</div>
+                <div class="ov-player-name">${p.serial !== null && p.serial !== undefined ? `<span class="ov-player-serial">#${escapeHTML(String(p.serial))}</span> ` : ''}${escapeHTML(p.name)}</div>
+                <div class="ov-player-role">${escapeHTML(p.role || 'Player')}${p.category ? ` · ${escapeHTML(p.category)}` : ''}</div>
                 ${si ? `<div class="ov-player-team">${escapeHTML(si.teamName)}</div>` : ''}
             </div>
             <div class="ov-player-right">
@@ -1352,7 +1367,7 @@ function renderPlayersPane(data) {
     const el = document.getElementById('ov-players-pane');
     el.innerHTML = statsHtml
         + `<input class="ov-search" type="search" placeholder="Search players…" value="${escapeHTML(ovPlayerSearch)}" oninput="ovPlayerSearch=this.value;if(ovData)renderPlayersPane(ovData)">`
-        + `<div class="ov-filters">${chipsHtml}</div>`
+        + `<div class="ov-filters">${chipsHtml}${categorySelectHtml}</div>`
         + `<div class="ov-player-list">${cardsHtml}</div>`;
 }
 
